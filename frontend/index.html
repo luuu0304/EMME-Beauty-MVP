@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMME Beauty - Gestión de Clientes</title>
+
+    <!-- Importamos una fuente minimalista y elegante de Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Variables de color basadas en la identidad de EMME Beauty */
+        :root {
+            --mostaza: #D4A347; /* Color de acento del logo */
+            --mostaza-hover: #c29239;
+            --fondo: #FAFAF8; /* Blanco roto/crema muy suave */
+            --texto-oscuro: #2C2C2C; /* Negro suave para los textos */
+            --texto-claro: #777777;
+            --borde: #E0E0E0;
+            --blanco: #FFFFFF;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        body {
+            background-color: var(--fondo);
+            color: var(--texto-oscuro);
+            display: flex;
+            height: 100vh;
+        }
+
+        /* --- MENÚ LATERAL --- */
+        .sidebar {
+            width: 250px;
+            background-color: var(--blanco);
+            border-right: 1px solid var(--borde);
+            padding: 2rem 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 300;
+            letter-spacing: 4px;
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--texto-oscuro);
+        }
+
+        .menu-item {
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--texto-oscuro);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .menu-item:hover, .menu-item.active {
+            background-color: #f9f4e8; /* Tono mostaza muy clarito */
+            color: var(--mostaza);
+        }
+
+        /* --- CONTENIDO PRINCIPAL --- */
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            overflow-y: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-weight: 400;
+            font-size: 2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .search-bar {
+            padding: 0.8rem 1rem;
+            border: 1px solid var(--borde);
+            border-radius: 8px;
+            width: 250px;
+            outline: none;
+        }
+
+        .btn-primary {
+            background-color: var(--mostaza);
+            color: var(--blanco);
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--mostaza-hover);
+        }
+
+        /* --- TARJETAS DE CLIENTES --- */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background-color: var(--blanco);
+            border: 1px solid var(--borde);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            position: relative;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--borde);
+            padding-bottom: 1rem;
+        }
+
+        .avatar {
+            width: 45px;
+            height: 45px;
+            background-color: var(--fondo);
+            border: 1px solid var(--mostaza);
+            color: var(--mostaza);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .client-info h3 {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .client-info span {
+            font-size: 0.85rem;
+            color: var(--texto-claro);
+        }
+
+        .visit-info {
+            font-size: 0.9rem;
+            color: var(--texto-oscuro);
+            margin-bottom: 1rem;
+        }
+
+        .visit-info strong {
+            font-weight: 500;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: none;
+            border: 1px solid var(--borde);
+            border-radius: 6px;
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            color: var(--texto-claro);
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--mostaza);
+            color: var(--mostaza);
+        }
+
+        /* --- MODAL (NUEVA CLIENTA) --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: var(--blanco);
+            width: 450px;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transform: translateY(-20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h2 {
+            font-weight: 400;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.2rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--texto-claro);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid var(--borde);
+            border-radius: 8px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            border-color: var(--mostaza);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-secondary {
+            background: none;
+            border: 1px solid var(--borde);
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            color: var(--texto-oscuro);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menú Lateral -->
+    <aside class="sidebar">
+        <div class="logo-text">EMME</div>
+        <div class="menu-item">Turnos</div>
+        <div class="menu-item active">Clientas</div>
+        <div class="menu-item">Empleados</div>
+        <div class="menu-item">Resúmenes</div>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        <div class="header">
+            <h1>Gestión de Clientas</h1>
+            <div class="header-actions">
+                <input type="text" class="search-bar" placeholder="Buscar clienta...">
+                <button class="btn-primary" onclick="abrirModal()">+ Nueva Clienta</button>
+            </div>
+        </div>
+
+        <!-- Grilla de Tarjetas -->
+        <div class="cards-grid">
+            
+            <!-- Tarjeta 1 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="avatar">LN</div>
+                    <div class="client-info">
+                        <h3>Luciana Navarro</h3>
+                        <span>20 años</span>
+                    </div>
+                </div>
+                <div class="visit-info">
+                    <p>Última Visita: <strong>04/06/2026</strong></p>
+                    <p>Servicio: <strong>Capping</strong></p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-icon">✏️ Editar</button>
+                    <button class="btn-icon">👁️ Mirar</button>
+                    <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);">+ Turno</button>
+                </div>
+            </div>
+
+            <!-- Tarjeta 2 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="avatar">MC</div>
+                    <div class="client-info">
+                        <h3>Monica Cohen</h3>
+                        <span>50 años</span>
+                    </div>
+                </div>
+                <div class="visit-info">
+                    <p>Última Visita: <strong>01/04/2026</strong></p>
+                    <p>Servicio: <strong>Spa Facial</strong></p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-icon">✏️ Editar</button>
+                    <button class="btn-icon">👁️ Mirar</button>
+                    <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);">+ Turno</button>
+                </div>
+            </div>
+
+            <!-- Tarjeta 3 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="avatar">SA</div>
+                    <div class="client-info">
+                        <h3>Simon Albarracin</h3>
+                        <span>Nuevo</span>
+                    </div>
+                </div>
+                <div class="visit-info">
+                    <p>Última Visita: <strong>-</strong></p>
+                    <p>Servicio: <strong>Primera consulta</strong></p>
+                </div>
+                <div class="card-actions">
+                    <button class="btn-icon">✏️ Editar</button>
+                    <button class="btn-icon">👁️ Mirar</button>
+                    <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);">+ Turno</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal Nueva Clienta -->
+    <div class="modal-overlay" id="modalNuevaClienta">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Registre un nuevo Cliente</h2>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" placeholder="Ej. Luciana">
+                </div>
+                <div class="form-group">
+                    <label>Apellido</label>
+                    <input type="text" placeholder="Ej. Navarro">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Cumpleaños</label>
+                <input type="date">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="tel" placeholder="387...">
+                </div>
+                <div class="form-group">
+                    <label>Instagram</label>
+                    <input type="text" placeholder="@usuario">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                <button class="btn-primary" onclick="cerrarModal()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script para que el modal funcione al hacer clic -->
+    <script>
+        const modal = document.getElementById('modalNuevaClienta');
+
+        function abrirModal() {
+            modal.classList.add('active');
+        }
+
+        function cerrarModal() {
+            modal.classList.remove('active');
+        }
+
+        // Cierra el modal si hacen clic afuera de la caja blanca
+        modal.addEventListener('click', function(e) {
+            if(e.target === modal) {
+                cerrarModal();
+            }
+        });
+    </script>
+</body>
+</html>
