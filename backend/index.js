@@ -38,6 +38,35 @@ app.get('/api/clientas', async (req, res) => {
     }
 });
 
+// Ruta para guardar una NUEVA clienta en la base de datos
+app.post('/api/clientas', async (req, res) => {
+    // 1. Agarramos los datos que nos mande el formulario
+    const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        
+        // 2. Armamos la consulta SQL de manera segura (evitando hackeos)
+        await pool.request()
+            .input('Nombre', sql.VarChar, Nombre)
+            .input('Apellido', sql.VarChar, Apellido)
+            .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
+            .input('Telefono', sql.VarChar, Telefono || null)
+            .input('Ig', sql.VarChar, Ig || null)
+            .query(`
+                INSERT INTO Clienta (Nombre, Apellido, Fecha_Nac, Telefono, Ig) 
+                VALUES (@Nombre, @Apellido, @Fecha_Nac, @Telefono, @Ig)
+            `);
+        
+        // 3. Avisamos que todo salió perfecto
+        res.status(201).json({ mensaje: "¡Clienta creada con éxito!" });
+        
+    } catch (err) {
+        console.error("Error al crear la clienta: ", err);
+        res.status(500).json({ error: "Hubo un error al guardar en la base de datos" });
+    }
+});
+
 // Levantar el servidor
 app.listen(port, () => {
     console.log(`Servidor corriendo en http://localhost:${port}`);

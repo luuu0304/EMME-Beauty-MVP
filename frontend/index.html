@@ -393,33 +393,33 @@
             <div class="form-row">
                 <div class="form-group">
                     <label>Nombre</label>
-                    <input type="text" placeholder="Ej. Luciana">
+                    <input type="text" id="nombreInput" placeholder="Ej. Luciana">
                 </div>
                 <div class="form-group">
                     <label>Apellido</label>
-                    <input type="text" placeholder="Ej. Navarro">
+                    <input type="text" id="apellidoInput" placeholder="Ej. Navarro">
                 </div>
             </div>
 
             <div class="form-group">
                 <label>Cumpleaños</label>
-                <input type="date">
+                <input type="date" id="cumpleInput">
             </div>
 
             <div class="form-row">
                 <div class="form-group">
                     <label>Teléfono</label>
-                    <input type="tel" placeholder="387...">
+                    <input type="tel" id="telefonoInput"placeholder="387...">
                 </div>
                 <div class="form-group">
                     <label>Instagram</label>
-                    <input type="text" placeholder="@usuario">
+                    <input type="text" id="igInput" placeholder="@usuario">
                 </div>
             </div>
 
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-                <button class="btn-primary" onclick="cerrarModal()">Registrar</button>
+                <button class="btn-primary" onclick="guardarClienta()">Registrar</button>
             </div>
         </div>
     </div>
@@ -497,6 +497,61 @@
 
     // Le decimos al navegador que ejecute esta función apenas termine de cargar la página
     window.addEventListener('DOMContentLoaded', cargarClientas);
+
+    // Función para capturar los datos y enviarlos al servidor
+    async function guardarClienta() {
+        // 1. Agarramos lo que escribiste en los inputs
+        const nombre = document.getElementById('nombreInput').value;
+        const apellido = document.getElementById('apellidoInput').value;
+        const fechaNac = document.getElementById('cumpleInput').value;
+        const telefono = document.getElementById('telefonoInput').value;
+        const ig = document.getElementById('igInput').value;
+
+        // 2. Validamos que al menos hayas puesto Nombre y Apellido
+        if (!nombre || !apellido) {
+            alert("¡Por favor completá el Nombre y el Apellido!");
+            return; // Corta la ejecución acá si faltan datos
+        }
+
+        // 3. Armamos la "cajita" de datos (JSON) para el backend
+        const nuevaClienta = {
+            Nombre: nombre,
+            Apellido: apellido,
+            Fecha_Nac: fechaNac ? fechaNac : null,
+            Telefono: telefono ? telefono : null,
+            Ig: ig ? ig : null
+        };
+
+        try {
+            // 4. Hacemos el envío (POST) al servidor
+            const respuesta = await fetch('http://localhost:3000/api/clientas', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(nuevaClienta)
+            });
+
+            if (respuesta.ok) {
+                // Si todo salió bien:
+                alert("¡Clienta registrada con éxito! 🎉");
+                cerrarModal(); // Escondemos el modal
+                cargarClientas(); // Recargamos las tarjetas para ver a la nueva
+                
+                // Limpiamos los cajoncitos para el próximo registro
+                document.getElementById('nombreInput').value = '';
+                document.getElementById('apellidoInput').value = '';
+                document.getElementById('cumpleInput').value = '';
+                document.getElementById('telefonoInput').value = '';
+                document.getElementById('igInput').value = '';
+            } else {
+                alert("Hubo un error al registrar en la base de datos.");
+            }
+        } catch (error) {
+            console.error("Error en el envío:", error);
+            alert("No se pudo conectar con el servidor.");
+        }
+    }
     </script>
 
 </body>
