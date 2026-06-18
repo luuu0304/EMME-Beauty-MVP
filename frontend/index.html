@@ -442,6 +442,62 @@
                 cerrarModal();
             }
         });
+        // Función para ir a buscar las clientas al backend y dibujarlas en la pantalla
+    async function cargarClientas() {
+        try {
+            // Le pedimos los datos al mozo (tu backend)
+            const respuesta = await fetch('http://localhost:3000/api/clientas');
+            const clientas = await respuesta.json();
+            
+            // Buscamos el contenedor donde están las tarjetas en tu HTML
+            const contenedor = document.querySelector('.cards-grid');
+            
+            // Limpiamos las tarjetas de prueba que estaban fijas
+            contenedor.innerHTML = '';
+            
+            // Recorremos el JSON que nos llegó y creamos una tarjeta real por cada clienta
+            clientas.forEach(clienta => {
+                // Agarramos las iniciales para el avatar
+                const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
+                
+                // Formateamos la fecha si existe
+                let fechaNac = 'No registrada';
+                if (clienta.Fecha_Nac) {
+                    fechaNac = new Date(clienta.Fecha_Nac).toLocaleDateString('es-AR');
+                }
+
+                const tarjetaHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="avatar">${iniciales}</div>
+                            <div class="client-info">
+                                <h3>${clienta.Nombre} ${clienta.Apellido}</h3>
+                                <span>Cumple: ${fechaNac}</span>
+                            </div>
+                        </div>
+                        <div class="visit-info">
+                            <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
+                            <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn-icon">✏️ Editar</button>
+                            <button class="btn-icon">👁️ Mirar</button>
+                            <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);">+ Turno</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Metemos la tarjeta nueva adentro de la pantalla
+                contenedor.innerHTML += tarjetaHTML;
+            });
+        } catch (error) {
+            console.error("Error conectando con la API de clientas:", error);
+        }
+    }
+
+    // Le decimos al navegador que ejecute esta función apenas termine de cargar la página
+    window.addEventListener('DOMContentLoaded', cargarClientas);
     </script>
+
 </body>
 </html>
