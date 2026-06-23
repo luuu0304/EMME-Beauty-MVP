@@ -1,0 +1,413 @@
+/* Variables de color basadas en la identidad de EMME Beauty */
+:root {
+    --mostaza: #D4A347; /* Color de acento del logo */
+    --mostaza-hover: #c29239;
+    --fondo: #FAFAF8; /* Blanco roto/crema muy suave */
+    --texto-oscuro: #2C2C2C; /* Negro suave para los textos */
+    --texto-claro: #777777;
+    --borde: #E0E0E0;
+    --blanco: #FFFFFF;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Montserrat', sans-serif;
+}
+
+body {
+    background-color: var(--fondo);
+    color: var(--texto-oscuro);
+    display: flex;
+    height: 100vh;
+}
+
+/* --- MENÚ LATERAL --- */
+.sidebar {
+    width: 250px;
+    background-color: var(--blanco);
+    border-right: 1px solid var(--borde);
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-text {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: 4px;
+    text-align: center;
+    margin-bottom: 3rem;
+    color: var(--texto-oscuro);
+}
+
+.menu-item {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--texto-oscuro);
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.menu-item:hover, .menu-item.active {
+    background-color: #f9f4e8; /* Tono mostaza muy clarito */
+    color: var(--mostaza);
+}
+
+/* --- CONTENIDO PRINCIPAL --- */
+.main-content {
+    flex: 1;
+    padding: 3rem;
+    overflow-y: auto;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.header h1 {
+    font-weight: 400;
+    font-size: 2rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.search-bar {
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    width: 250px;
+    outline: none;
+}
+
+.btn-primary {
+    background-color: var(--mostaza);
+    color: var(--blanco);
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.btn-primary:hover {
+    background-color: var(--mostaza-hover);
+}
+
+/* --- TARJETAS DE CLIENTES --- */
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    background-color: var(--blanco);
+    border: 1px solid var(--borde);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+    position: relative;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid var(--borde);
+    padding-bottom: 1rem;
+}
+
+.avatar {
+    width: 45px;
+    height: 45px;
+    background-color: var(--fondo);
+    border: 1px solid var(--mostaza);
+    color: var(--mostaza);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.client-info h3 {
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+
+.client-info span {
+    font-size: 0.85rem;
+    color: var(--texto-claro);
+}
+
+.visit-info {
+    font-size: 0.9rem;
+    color: var(--texto-oscuro);
+    margin-bottom: 1rem;
+}
+
+.visit-info strong {
+    font-weight: 500;
+}
+
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: none;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    padding: 0.4rem 0.8rem;
+    cursor: pointer;
+    color: var(--texto-claro);
+    font-size: 0.8rem;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    border-color: var(--mostaza);
+    color: var(--mostaza);
+}
+
+/* --- MODAL (NUEVA CLIENTA) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-content {
+    background-color: var(--blanco);
+    width: 450px;
+    border-radius: 12px;
+    padding: 2.5rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+}
+
+.modal-header {
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h2 {
+    font-weight: 400;
+    font-size: 1.5rem;
+}
+
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--texto-claro);
+    margin-bottom: 0.4rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+}
+
+.form-group input:focus {
+    border-color: var(--mostaza);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.btn-secondary {
+    background: none;
+    border: 1px solid var(--borde);
+    padding: 0.8rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--texto-oscuro);
+}
+
+.btn-secondary:hover {
+    background-color: #f5f5f5;
+}
+
+/* --- BUSCADOR DE CLIENTAS --- */
+#buscadorClientas {
+    padding: 10px 16px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #333;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    width: 250px;
+    outline: none;
+    transition: all 0.3s ease;
+    margin-right: 15px;
+}
+
+#buscadorClientas:focus {
+    border-color: var(--mostaza, #d4af37);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.15);
+}
+
+#buscadorClientas::placeholder {
+    color: #aaa;
+}
+
+/* =========================================
+   MEJORAS VISUALES PARA EL MODAL DE TURNOS
+   ========================================= */
+
+/* Estilizamos todos los inputs y selects del modal para que sean idénticos y modernos */
+.modal-content input[type="text"],
+.modal-content input[type="date"],
+.modal-content input[type="time"],
+.modal-content select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    color: #333;
+    background-color: #fff;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+}
+
+/* El efecto "glow" dorado cuando hacés clic para escribir */
+.modal-content input:focus,
+.modal-content select:focus {
+    outline: none;
+    border-color: var(--mostaza);
+    box-shadow: 0 0 0 3px rgba(207, 161, 95, 0.15); /* Una sombrita dorada suave */
+}
+
+/* Dejamos el botón de "+ Nueva" con más estilo */
+#btnNuevaClientaExpress {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    color: #555;
+    border-radius: 8px;
+    padding: 0 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap; /* Evita que el texto se parta en dos líneas */
+}
+
+#btnNuevaClientaExpress:hover {
+    background-color: #e9e9e9;
+    border-color: #ccc;
+    color: #333;
+}
+
+/* Ajustamos el link de "Cancelar" para que parezca un enlace real */
+#btnCancelarExpress {
+    font-size: 13px !important;
+    color: #888 !important;
+    margin-top: 5px;
+}
+#btnCancelarExpress:hover {
+    color: var(--mostaza) !important;
+}
+
+/* ==========================================
+   SISTEMA DE NOTIFICACIONES (TOASTS)
+   ========================================== */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.toast {
+    min-width: 250px;
+    padding: 16px 24px;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    opacity: 0;
+    transform: translateX(100%); /* Arranca fuera de la pantalla */
+    animation: deslizarAparecer 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Colores según el tipo de mensaje */
+.toast.success { background-color: #2e7d32; } /* Verde oscuro elegante */
+.toast.error { background-color: #d32f2f; }   /* Rojo alerta */
+.toast.warning { background-color: #d4a373; } /* El mostaza de EMME */
+
+/* Animaciones */
+@keyframes deslizarAparecer {
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes deslizarDesaparecer {
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}

@@ -50,3 +50,17 @@ SELECT * FROM Empleada;
 SELECT * FROM Servicio;
 SELECT * FROM Clienta;
 SELECT * FROM Turno;
+
+USE EmmE_Beauty;
+ALTER TABLE Turno ADD Fecha_Hora_Fin DATETIME;
+
+USE EmmE_Beauty;
+
+-- Le sumamos 90 minutos a la Fecha_Hora de inicio para calcular el Fin
+UPDATE Turno 
+SET Fecha_Hora_Fin = DATEADD(minute, 90, Fecha_Hora)
+WHERE Fecha_Hora_Fin IS NULL;
+
+-- Lo vemos para confirmar
+
+SELECT * FROM Turno;
