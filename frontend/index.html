@@ -28,11 +28,11 @@
             <div class="header-actions">
                 <input type="text" id="buscadorClientas" placeholder="Buscar clienta..." style="display: none;">
                 
-                <button class="btn-primary" id="btnNuevaClienta" onclick="abrirModal()" style="display: none;">+ Nueva Clienta</button>
+                <button class="btn-primary" id="btnNuevaClienta" onclick="prepararNuevaClienta()" style="display: none;">+ Nueva Clienta</button>
                 
                 <button class="btn-primary" id="btnNuevoTurno" onclick="abrirModalTurno()">+ Nuevo Turno</button>
 
-                <button class="btn-primary" id="btnNuevaEmpleada" onclick="abrirModalEmpleada()" style="display: none;">+ Nueva Empleada</button>
+                <button class="btn-primary" id="btnNuevaEmpleada" onclick="prepararNuevaEmpleada()" style="display: none;">+ Nueva Empleada</button>
             </div>
         </div>
 
@@ -52,11 +52,14 @@
         </div>
     </main>
 
+    <!-- Modal Nueva Clienta -->
     <div class="modal-overlay" id="modalNuevaClienta">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Registre un nuevo Cliente</h2>
+                <h2 id="tituloModalClienta">Registre un nuevo Cliente</h2>
             </div>
+
+            <input type="hidden" id="idClientaOculto">
             
             <div class="form-row">
                 <div class="form-group">
@@ -87,11 +90,12 @@
 
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
-                <button class="btn-primary" onclick="guardarClienta()">Registrar</button>
+                <button class="btn-primary" id="btnGuardarClienta" onclick="guardarClienta()">Registrar</button>
             </div>
         </div>
     </div>
 
+    <!-- Modal Nuevo Turno -->
     <div class="modal-overlay" id="modalNuevoTurno">
         <div class="modal-content">
             <div class="modal-header">
@@ -129,17 +133,12 @@
                     <label>Profesional</label>
                     <select id="selectEmpleadaTurno">
                         <option value="">Seleccione...</option>
-                        <option value="1">Mili</option>
-                        <option value="2">Meli</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Servicio</label>
                     <select id="selectServicioTurno">
                         <option value="">Seleccione...</option>
-                        <option value="1">Kapping Gel</option>
-                        <option value="2">Lifting de Pestañas</option>
-                        <option value="3">Manicura Semipermanente</option>
                     </select>
                 </div>
             </div>
@@ -164,28 +163,50 @@
 
     <!-- Modal Nueva Empleada -->
     <div class="modal-overlay" id="modalNuevaEmpleada">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="tituloModalEmpleada">Registrar Nueva Profesional</h2>
+                </div>
+                
+                <input type="hidden" id="idEmpleadaOculto">
+                
+                <div class="form-group">
+                    <label>Nombre y Apellido</label>
+                    <input type="text" id="nombreEmpleadaInput" placeholder="Ej. Martina Gómez">
+                </div>
+
+                <div class="form-group">
+                    <label>DNI</label>
+                    <input type="text" id="dniEmpleadaInput" placeholder="Sin puntos, ej. 40123456">
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="cerrarModalEmpleada()">Cancelar</button>
+                    <button class="btn-primary" id="btnGuardarEmpleada" onclick="guardarEmpleada()">Registrar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Historial Clienta-->
+        <div class="modal-overlay" id="modalPerfilClienta">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Registrar Nueva Profesional</h2>
+                <h2 id="nombrePerfilClienta">Perfil de la Clienta</h2>
             </div>
             
-            <div class="form-group">
-                <label>Nombre y Apellido</label>
-                <input type="text" id="nombreEmpleadaInput" placeholder="Ej. Martina Gómez">
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; color: var(--mostaza); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Historial de Servicios</h3>
+                
+                <div id="listaHistorialClienta" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
+                    </div>
             </div>
 
-            <div class="form-group">
-                <label>DNI</label>
-                <input type="text" id="dniEmpleadaInput" placeholder="Sin puntos, ej. 40123456">
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="cerrarModalEmpleada()">Cancelar</button>
-                <button class="btn-primary" onclick="guardarEmpleada()">Registrar</button>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn-secondary" onclick="cerrarModalPerfil()">Cerrar</button>
             </div>
         </div>
     </div>
-    
+
     <!-- Contenedor para notificaciones (Toasts) -->
     <div id="toastContainer" class="toast-container"></div>
 

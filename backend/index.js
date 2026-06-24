@@ -80,6 +80,58 @@ app.post('/api/clientas', async (req, res) => {
     }
 });
 
+// Actualizar (Editar) una clienta existente
+app.put('/api/clientas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Clienta', sql.Int, id)
+            .input('Nombre', sql.VarChar, Nombre)
+            .input('Apellido', sql.VarChar, Apellido)
+            .input('Fecha_Nac', sql.Date, Fecha_Nac || null)
+            .input('Telefono', sql.VarChar, Telefono || null)
+            .input('Ig', sql.VarChar, Ig || null)
+            .query(`
+                UPDATE Clienta 
+                SET Nombre = @Nombre, Apellido = @Apellido, Fecha_Nac = @Fecha_Nac, Telefono = @Telefono, Ig = @Ig
+                WHERE Id_Clienta = @Id_Clienta
+            `);
+            
+        res.status(200).send("Clienta actualizada correctamente");
+    } catch (error) {
+        console.error("Error al actualizar clienta:", error);
+        res.status(500).send("Error interno al actualizar");
+    }
+});
+
+// Obtener el historial de turnos de una clienta
+app.get('/api/clientas/:id/historial', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        
+        // Hacemos un JOIN para traer los nombres del servicio y la empleada, ordenados por fecha
+        let result = await pool.request()
+            .input('Id_Clienta', sql.Int, id)
+            .query(`
+                SELECT t.Fecha_Hora, s.Nombre AS Nombre_Servicio, e.Nombre_Ap
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
+                WHERE t.Id_Clienta = @Id_Clienta
+                ORDER BY t.Fecha_Hora DESC
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo historial: ", err);
+        res.status(500).send("Error conectando a la base de datos");
+    }
+});
+
 // --- SECCIÓN: EMPLEADOS ---
 
 // Obtener todas las empleadas para armar sus tarjetas
@@ -113,6 +165,50 @@ app.post('/api/empleadas', async (req, res) => {
     } catch (error) {
         console.error("Error al insertar empleada:", error);
         res.status(500).send("Error interno al guardar la empleada");
+    }
+});
+
+// Dar de baja (eliminar) una empleada
+app.delete('/api/empleadas/:id', async (req, res) => {
+    try {
+        const { id } = req.params; // Agarramos el ID que viene en la URL
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .query(`
+                DELETE FROM Empleada 
+                WHERE Id_Empleada = @Id_Empleada
+            `);
+            
+        res.status(200).send("Profesional dada de baja correctamente");
+    } catch (error) {
+        console.error("Error al eliminar empleada:", error);
+        res.status(500).send("Error interno al eliminar la empleada");
+    }
+});
+
+// Actualizar (Editar) una empleada existente
+app.put('/api/empleadas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre_Ap, Dni } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
+            .input('Dni', sql.VarChar, Dni || null)
+            .query(`
+                UPDATE Empleada 
+                SET Nombre_Ap = @Nombre_Ap, Dni = @Dni
+                WHERE Id_Empleada = @Id_Empleada
+            `);
+            
+        res.status(200).send("Profesional actualizada correctamente");
+    } catch (error) {
+        console.error("Error al actualizar empleada:", error);
+        res.status(500).send("Error interno al actualizar");
     }
 });
 
@@ -163,6 +259,21 @@ app.post('/api/turnos', async (req, res) => {
     } catch (error) {
         console.error("Error al insertar el turno:", error);
         res.status(500).send("Error interno al guardar el turno");
+    }
+});
+
+// ==========================================
+// MÓDULO DE SERVICIOS
+// ==========================================
+// Obtener todos los servicios para el desplegable
+app.get('/api/servicios', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query('SELECT Id_Servicio, Nombre FROM Servicio');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo servicios:", err);
+        res.status(500).send("Error interno del servidor");
     }
 });
 

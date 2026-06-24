@@ -25,7 +25,36 @@ function mostrarNotificacion(mensaje, tipo = 'success') {
 window.addEventListener('DOMContentLoaded', () => {
     cargarClientas();
     cargarEmpleadas();
+    cargarServicios();
 });
+
+// --- Sistema de Confirmación Personalizado (Promesa) ---
+function pedirConfirmacion(mensaje) {
+    return new Promise((resolve) => {
+        const modalConf = document.getElementById('modalConfirmacion');
+        const textoConf = document.getElementById('textoConfirmacion');
+        const btnAceptar = document.getElementById('btnAceptarConfirmacion');
+        const btnCancelar = document.getElementById('btnCancelarConfirmacion');
+
+        // Ponemos el texto que queramos mostrar
+        textoConf.textContent = mensaje;
+        
+        // Mostramos el modal
+        modalConf.classList.add('active');
+
+        // Si toca aceptar, cerramos el modal y devolvemos "true"
+        btnAceptar.onclick = () => {
+            modalConf.classList.remove('active');
+            resolve(true);
+        };
+
+        // Si toca cancelar, cerramos y devolvemos "false"
+        btnCancelar.onclick = () => {
+            modalConf.classList.remove('active');
+            resolve(false);
+        };
+    });
+}
 
 // ==========================================================================
 // 2. NAVEGACIÓN Y MENÚ LATERAL
@@ -250,6 +279,49 @@ async function guardarTurno() {
     }
 }
 
+// --- Atajo: Agendar turno desde la tarjeta de Clienta ---
+function agendarTurnoRapido(idClienta) {
+    // 1. Nos aseguramos de que el selector clásico esté visible (y el express oculto)
+    const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
+    const grupoExpress = document.getElementById('grupoClientaExpress');
+    
+    if (grupoSeleccion && grupoExpress) {
+        grupoExpress.style.display = 'none';
+        grupoSeleccion.style.display = 'block';
+    }
+
+    // 2. Buscamos el desplegable y le asignamos mágicamente el ID de la clienta
+    const selectClienta = document.getElementById('selectClientaTurno');
+    if (selectClienta) {
+        selectClienta.value = idClienta;
+    }
+
+    // 3. Abrimos el modal de turnos
+    abrirModalTurno();
+}
+
+// --- Cargar Servicios en el desplegable de Turnos ---
+async function cargarServicios() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        const servicios = await respuesta.json();
+        
+        const selectServicio = document.getElementById('selectServicioTurno');
+        if (selectServicio) {
+            selectServicio.innerHTML = '<option value="">Seleccione...</option>';
+            
+            servicios.forEach(servicio => {
+                const opcion = document.createElement('option');
+                opcion.value = servicio.Id_Servicio;
+                opcion.textContent = servicio.Nombre;
+                selectServicio.appendChild(opcion);
+            });
+        }
+    } catch (error) {
+        console.error("Error conectando con la API de servicios:", error);
+    }
+}
+
 // ==========================================================================
 // 4. MÓDULO DE CLIENTAS
 // ==========================================================================
@@ -271,13 +343,111 @@ if (modal) {
     });
 }
 
-// --- Cargar Clientas ---
+// --- Prepara el modal para CREAR de cero ---
+function prepararNuevaClienta() {
+    document.getElementById('idClientaOculto').value = ''; 
+    document.getElementById('nombreInput').value = '';
+    document.getElementById('apellidoInput').value = '';
+    document.getElementById('cumpleInput').value = '';
+    document.getElementById('telefonoInput').value = '';
+    document.getElementById('igInput').value = '';
+    
+    document.getElementById('tituloModalClienta').textContent = 'Registre un nuevo Cliente';
+    document.getElementById('btnGuardarClienta').textContent = 'Registrar';
+    
+    abrirModal();
+}
+
+// --- Prepara el modal para EDITAR ---
+function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
+    document.getElementById('idClientaOculto').value = id; 
+    document.getElementById('nombreInput').value = nombre;
+    document.getElementById('apellidoInput').value = apellido;
+    
+    // Tratamiento especial para la fecha
+    if (fechaNac && fechaNac !== 'null' && fechaNac !== 'undefined') {
+        document.getElementById('cumpleInput').value = fechaNac.split('T')[0];
+    } else {
+        document.getElementById('cumpleInput').value = '';
+    }
+
+    document.getElementById('telefonoInput').value = (telefono === 'null' || !telefono || telefono === 'undefined') ? '' : telefono;
+    document.getElementById('igInput').value = (ig === 'null' || !ig || ig === 'undefined') ? '' : ig;
+    
+    document.getElementById('tituloModalClienta').textContent = 'Editar Clienta';
+    document.getElementById('btnGuardarClienta').textContent = 'Actualizar';
+    
+    abrirModal();
+}
+
+// --- Modal Perfil / Historial ---
+const modalPerfil = document.getElementById('modalPerfilClienta');
+
+function cerrarModalPerfil() {
+    if (modalPerfil) modalPerfil.classList.remove('active');
+}
+
+if (modalPerfil) {
+    modalPerfil.addEventListener('click', function(e) {
+        if(e.target === modalPerfil) cerrarModalPerfil();
+    });
+}
+
+// --- Función para ver el perfil ---
+async function verPerfilClienta(idClienta, nombre, apellido) {
+    // 1. Ponemos el nombre de la clienta en el título
+    document.getElementById('nombrePerfilClienta').textContent = `Historial de ${nombre} ${apellido}`;
+    
+    const listaHistorial = document.getElementById('listaHistorialClienta');
+    listaHistorial.innerHTML = '<p style="text-align:center; color:#888;">Cargando historial...</p>';
+    
+    // 2. Abrimos el modal
+    modalPerfil.classList.add('active');
+
+    try {
+        // 3. Vamos a buscar los datos al backend
+        const respuesta = await fetch(`http://localhost:3000/api/clientas/${idClienta}/historial`);
+        const historial = await respuesta.json();
+
+        listaHistorial.innerHTML = ''; // Limpiamos el "Cargando..."
+
+        if (historial.length === 0) {
+            listaHistorial.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Esta clienta aún no tiene turnos registrados. 💅</p>';
+            return;
+        }
+
+        // 4. Dibujamos cada turno pasado
+        historial.forEach(turno => {
+            // Formateamos la fecha para que se lea linda (ej. "23/06/2026 - 15:30 hs")
+            const fechaObj = new Date(turno.Fecha_Hora);
+            const fechaLimpia = fechaObj.toLocaleDateString('es-AR');
+            const horaLimpia = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+            const itemHTML = `
+                <div style="background-color: #f9f9f9; border-left: 4px solid var(--mostaza); padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;">
+                    <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${turno.Nombre_Servicio}</div>
+                    <div style="font-size: 13px; color: #666; display: flex; justify-content: space-between;">
+                        <span>📅 ${fechaLimpia} a las ${horaLimpia} hs</span>
+                        <span>👩‍💼 con ${turno.Nombre_Ap}</span>
+                    </div>
+                </div>
+            `;
+            listaHistorial.innerHTML += itemHTML;
+        });
+
+    } catch (error) {
+        console.error("Error cargando historial:", error);
+        listaHistorial.innerHTML = '<p style="text-align:center; color:#d9534f;">Hubo un error al cargar los datos.</p>';
+    }
+}
+
+// --- Cargar Clientas (Dibuja las tarjetas y llena el select de turnos) ---
 async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
         const clientas = await respuesta.json();
         
-        // Llenar select del modal de turnos
+        // 1. Llenar select del modal de turnos
         const selectTurno = document.getElementById('selectClientaTurno');
         if (selectTurno) {
             selectTurno.innerHTML = '<option value="">Seleccione una clienta...</option>';
@@ -289,7 +459,7 @@ async function cargarClientas() {
             });
         }
 
-        // Dibujar tarjetas
+        // 2. Dibujar tarjetas
         const contenedor = document.querySelector('#seccionClientas .cards-grid');
         if (!contenedor) return;
 
@@ -316,9 +486,9 @@ async function cargarClientas() {
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-icon">✏️ Editar</button>
-                        <button class="btn-icon">👁️ Mirar</button>
-                        <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);">+ Turno</button>
+                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️ Editar</button>
+                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️ Mirar</button>
+                        <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">+ Turno</button>
                     </div>
                 </div>
             `;
@@ -329,20 +499,21 @@ async function cargarClientas() {
     }
 }
 
-// --- Guardar Clienta ---
+// --- Guardar Clienta (POST y PUT) ---
 async function guardarClienta() {
-    const nombre = document.getElementById('nombreInput').value;
-    const apellido = document.getElementById('apellidoInput').value;
+    const idOculto = document.getElementById('idClientaOculto').value;
+    const nombre = document.getElementById('nombreInput').value.trim();
+    const apellido = document.getElementById('apellidoInput').value.trim();
     const fechaNac = document.getElementById('cumpleInput').value;
-    const telefono = document.getElementById('telefonoInput').value;
-    const ig = document.getElementById('igInput').value;
+    const telefono = document.getElementById('telefonoInput').value.trim();
+    const ig = document.getElementById('igInput').value.trim();
 
     if (!nombre || !apellido) {
         mostrarNotificacion("¡Por favor completá el Nombre y el Apellido!", "warning");
         return; 
     }
 
-    const nuevaClienta = {
+    const clientaData = {
         Nombre: nombre,
         Apellido: apellido,
         Fecha_Nac: fechaNac ? fechaNac : null,
@@ -350,25 +521,26 @@ async function guardarClienta() {
         Ig: ig ? ig : null
     };
 
+    const url = idOculto 
+        ? `http://localhost:3000/api/clientas/${idOculto}` 
+        : 'http://localhost:3000/api/clientas';
+        
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
     try {
-        const respuesta = await fetch('http://localhost:3000/api/clientas', {
-            method: 'POST',
+        const respuesta = await fetch(url, {
+            method: metodoElegido,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nuevaClienta)
+            body: JSON.stringify(clientaData)
         });
 
         if (respuesta.ok) {
-            mostrarNotificacion("¡Clienta registrada con éxito! 🎉", "success");
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito! ✏️" : "¡Clienta registrada con éxito! 🎉";
+            mostrarNotificacion(mensajeExito, "success");
             cerrarModal(); 
             cargarClientas(); 
-            
-            document.getElementById('nombreInput').value = '';
-            document.getElementById('apellidoInput').value = '';
-            document.getElementById('cumpleInput').value = '';
-            document.getElementById('telefonoInput').value = '';
-            document.getElementById('igInput').value = '';
         } else {
-            mostrarNotificacion("Hubo un error al registrar en la base de datos.", "error");
+            mostrarNotificacion("Hubo un error al guardar en la base de datos.", "error");
         }
     } catch (error) {
         console.error("Error en el envío:", error);
@@ -415,11 +587,100 @@ if (modalEmpleada) {
     });
 }
 
-// --- Cargar Empleadas ---
+// --- Prepara el modal para CREAR de cero ---
+function prepararNuevaEmpleada() {
+    document.getElementById('idEmpleadaOculto').value = ''; 
+    document.getElementById('nombreEmpleadaInput').value = '';
+    document.getElementById('dniEmpleadaInput').value = '';
+    
+    document.getElementById('tituloModalEmpleada').textContent = 'Registrar Nueva Profesional';
+    document.getElementById('btnGuardarEmpleada').textContent = 'Registrar';
+    
+    abrirModalEmpleada();
+}
+
+// --- Prepara el modal para EDITAR ---
+function abrirModalEditarEmpleada(id, nombre, dni) {
+    document.getElementById('idEmpleadaOculto').value = id; 
+    document.getElementById('nombreEmpleadaInput').value = nombre;
+    
+    document.getElementById('dniEmpleadaInput').value = (dni === '-' || !dni) ? '' : dni;
+    
+    document.getElementById('tituloModalEmpleada').textContent = 'Editar Profesional';
+    document.getElementById('btnGuardarEmpleada').textContent = 'Actualizar';
+    
+    abrirModalEmpleada();
+}
+
+// --- Guardar (Sirve para POST y PUT) ---
+async function guardarEmpleada() {
+    const idOculto = document.getElementById('idEmpleadaOculto').value;
+    const nombre = document.getElementById('nombreEmpleadaInput').value.trim();
+    const dni = document.getElementById('dniEmpleadaInput').value.trim();
+
+    if (!nombre) {
+        mostrarNotificacion("¡Por favor ingresá el nombre de la profesional!", "warning");
+        return;
+    }
+
+    if (dni){
+        const dniRegex = /^\d{7,8}$/; 
+        if (!dniRegex.test(dni)) {
+            mostrarNotificacion("Por favor, ingresá un DNI válido (7 u 8 números).", "warning");
+            return; 
+        }
+    }
+
+    const url = idOculto 
+        ? `http://localhost:3000/api/empleadas/${idOculto}` 
+        : 'http://localhost:3000/api/empleadas';
+        
+    const metodoElegido = idOculto ? 'PUT' : 'POST';
+
+    try {
+        const response = await fetch(url, {
+            method: metodoElegido,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Nombre_Ap: nombre, Dni: dni || null })
+        });
+
+        if (response.ok) {
+            const mensajeExito = idOculto ? "¡Datos actualizados con éxito! ✏️" : "¡Profesional registrada con éxito! ✨";
+            mostrarNotificacion(mensajeExito, "success");
+            
+            cerrarModalEmpleada();
+            cargarEmpleadas(); 
+        } else {
+            mostrarNotificacion("Hubo un error al guardar en el servidor.", "error");
+        }
+    } catch (error) {
+        console.error("Error guardando empleada:", error);
+        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
+}
+
+// --- Cargar Empleadas (Dibuja las tarjetas) ---
 async function cargarEmpleadas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/empleadas');
         const empleadas = await respuesta.json();
+        // ================================================================
+        // NUEVO: Llenamos el desplegable de Profesionales en el modal de Turnos
+        // ================================================================
+        const selectEmpleada = document.getElementById('selectEmpleadaTurno');
+        if (selectEmpleada) {
+            // Limpiamos las opciones viejas
+            selectEmpleada.innerHTML = '<option value="">Seleccione...</option>';
+            
+            // Agregamos a cada chica disponible
+            empleadas.forEach(empleada => {
+                const opcion = document.createElement('option');
+                opcion.value = empleada.Id_Empleada; // El ID real de la base de datos
+                opcion.textContent = empleada.Nombre_Ap; // El nombre que ve la clienta
+                selectEmpleada.appendChild(opcion);
+            });
+        }
+        // ================================================================
         
         const contenedor = document.getElementById('contenedorEmpleadas');
         if (!contenedor) return; 
@@ -440,8 +701,8 @@ async function cargarEmpleadas() {
                         </div>
                     </div>
                     <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                        <button class="btn-icon">✏️ Editar</button>
-                        <button class="btn-icon" style="color: #d9534f;">🗑️ Dar de baja</button>
+                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')">✏️ Editar</button>
+                        <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">🗑️ Dar de baja</button>
                     </div>
                 </div>
             `;
@@ -452,47 +713,25 @@ async function cargarEmpleadas() {
     }
 }
 
-// --- Guardar Empleada ---
-async function guardarEmpleada() {
-    const nombre = document.getElementById('nombreEmpleadaInput').value.trim();
-    const dni = document.getElementById('dniEmpleadaInput').value.trim();
-
-    if (!nombre) {
-        mostrarNotificacion("¡Por favor ingresá el nombre de la profesional!", "warning");
-        return;
-    }
-
-    if (dni){
-        const dniRegex = /^\d{7,8}$/; 
-        if (!dniRegex.test(dni)) {
-            mostrarNotificacion("Por favor, ingresá un DNI válido (7 u 8 números, sin puntos ni letras).", "warning");
-            return; 
-        }
-    }
+// --- Eliminar Empleada (Con Promesa Estética) ---
+async function eliminarEmpleada(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
+    
+    if (!confirmacion) return; 
 
     try {
-        const response = await fetch('http://localhost:3000/api/empleadas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                Nombre_Ap: nombre, 
-                Dni: dni || null 
-            })
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
+            method: 'DELETE'
         });
 
-        if (response.ok) {
-            mostrarNotificacion("¡Profesional registrada con éxito! ✨", "success");
-            cerrarModalEmpleada();
-            
-            document.getElementById('nombreEmpleadaInput').value = '';
-            document.getElementById('dniEmpleadaInput').value = '';
-            
+        if (respuesta.ok) {
+            mostrarNotificacion("Profesional dada de baja con éxito.", "success");
             cargarEmpleadas(); 
         } else {
-            mostrarNotificacion("Hubo un error al guardar en el servidor.", "error");
+            mostrarNotificacion("Hubo un error al intentar eliminar en la base de datos.", "error");
         }
     } catch (error) {
-        console.error("Error guardando empleada:", error);
+        console.error("Error eliminando empleada:", error);
         mostrarNotificacion("No se pudo conectar con el servidor.", "error");
     }
-}
+}   
