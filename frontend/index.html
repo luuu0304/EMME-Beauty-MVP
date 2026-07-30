@@ -36,9 +36,57 @@
             </div>
         </div>
 
-        <div id="seccionTurnos">
-            <div id="calendario"></div>
-        </div>
+<!-- SECCIÓN TURNOS -->
+        <div id="seccionTurnos" class="seccion-activa">
+            
+            <!-- Cabecera Principal y Toggle -->
+            <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+                <div>
+                    <h2>Vistas de la Agenda</h2>
+                    <!-- Botonera para cambiar de vista -->
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button id="btnVistaDiaria" class="btn-tab active" onclick="cambiarVistaAgenda('diaria')">Agenda Diaria</button>
+                        <button id="btnVistaSemanal" class="btn-tab" onclick="cambiarVistaAgenda('semanal')">Agenda Semanal</button>
+                    </div>
+                </div>
+                <!-- Eliminamos el botón duplicado que estaba acá -->
+            </div>
+
+            <!-- ============================================== -->
+            <!-- VISTA 1: AGENDA DIARIA (La que estamos armando)-->
+            <!-- ============================================== -->
+            <div id="vistaDiaria" style="display: block;">
+                <!-- Controles de Fecha (solo para la diaria) -->
+                <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: white; padding: 10px 15px; border-radius: 8px; width: fit-content; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    <button class="btn-icon" id="btnDiaAnterior">◀</button>
+                    <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
+                    <button class="btn-icon" id="btnDiaSiguiente">▶</button>
+                </div>
+
+                <!-- Grilla del Calendario -->
+                <div class="agenda-container">
+                    <div class="agenda-header" id="agendaHeader">
+                        <div class="hora-col">Hora</div>
+                        <!-- JavaScript inyectará a las profesionales acá -->
+                    </div>
+                    <div class="agenda-body" id="agendaBody">
+                        <!-- JavaScript inyectará las horas acá -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================== -->
+            <!-- VISTA 2: AGENDA SEMANAL (Tu código anterior)  -->
+            <!-- ============================================== -->
+            <div id="vistaSemanal" style="display: none;">
+                <!-- ACÁ ADENTRO PODÉS VOLVER A PEGAR TU GRILLA SEMANAL VIEJA -->
+                <div style="background: white; border-radius: 12px; padding: 30px; text-align: center; color: #666; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <h3>Vista Semanal en construcción 🚧</h3>
+                    <p>Acá va a ir tu calendario de Lunes a Sábado.</p>
+                </div>
+            </div>
+            
+        </div> <!-- Cierre de seccionTurnos -->
 
         <div id="seccionClientas" style="display: none;">
             <div class="cards-grid">

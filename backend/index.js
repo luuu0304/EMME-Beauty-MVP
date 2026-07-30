@@ -132,6 +132,38 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
     }
 });
 
+// ==========================================
+// MÓDULO DE AGENDA DIARIA
+// ==========================================
+// Obtener los turnos de una fecha específica
+app.get('/api/turnos/fecha/:fecha', async (req, res) => {
+    try {
+        const { fecha } = req.params; // Llega en formato YYYY-MM-DD
+        let pool = await sql.connect(dbConfig);
+        
+        let result = await pool.request()
+            .input('FechaBuscada', sql.VarChar, fecha)
+            .query(`
+                SELECT 
+                    t.Id_Turno, 
+                    t.Fecha_Hora, 
+                    c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, /* ¡Acá estaba el fix! */
+                    s.Nombre AS Nombre_Servicio, 
+                    s.Duracion_Minutos, 
+                    t.Id_Empleada
+                FROM Turno t
+                JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE CAST(t.Fecha_Hora AS DATE) = @FechaBuscada
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo turnos de la agenda: ", err);
+        res.status(500).send("Error conectando a la base de datos");
+    }
+});
+
 // --- SECCIÓN: EMPLEADOS ---
 
 // Obtener todas las empleadas para armar sus tarjetas

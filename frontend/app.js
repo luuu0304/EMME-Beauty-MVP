@@ -26,6 +26,8 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarClientas();
     cargarEmpleadas();
     cargarServicios();
+    inicializarFechaAgenda();
+    inicializarAgendaDiaria();
 });
 
 // --- Sistema de Confirmación Personalizado (Promesa) ---
@@ -319,6 +321,199 @@ async function cargarServicios() {
         }
     } catch (error) {
         console.error("Error conectando con la API de servicios:", error);
+    }
+}
+
+// --- Inicializar y dibujar la Agenda Diaria ---
+async function inicializarAgendaDiaria() {
+    try {
+        // 1. Buscamos a las profesionales en la base de datos
+        const respuesta = await fetch('http://localhost:3000/api/empleadas');
+        const empleadas = await respuesta.json();
+
+        // 2. Dibujamos el Encabezado (Los nombres arriba)
+        const agendaHeader = document.getElementById('agendaHeader');
+        if (agendaHeader) {
+            agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
+            empleadas.forEach(emp => {
+                // Asumimos que la columna de tu tabla se llama Nombre_Ap
+                agendaHeader.innerHTML += `<div style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
+            });
+        }
+
+        // 3. Dibujamos el Cuerpo (Las filas de 30 min y las celdas vacías)
+        const agendaBody = document.getElementById('agendaBody');
+        if (!agendaBody) return;
+        
+        agendaBody.innerHTML = ''; 
+        
+        const horaInicio = 9; // 09:00 hs
+        const horaFin = 20;   // 20:00 hs
+        
+        for (let hora = horaInicio; hora <= horaFin; hora++) {
+            // --- Bloque de la hora en punto (XX:00) ---
+            let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
+            let filaEnPunto = document.createElement('div');
+            filaEnPunto.className = 'agenda-row hora-en-punto';
+            
+            let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
+            
+            // Creamos un "cuadradito" vacío por cada profesional para esta hora
+            empleadas.forEach(emp => {
+                htmlFilaEnPunto += `<div class="agenda-celda" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+            });
+            
+            filaEnPunto.innerHTML = htmlFilaEnPunto;
+            agendaBody.appendChild(filaEnPunto);
+            
+            // --- Bloque de la media hora (XX:30) ---
+            if (hora < horaFin) {
+                let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
+                let filaMediaHora = document.createElement('div');
+                filaMediaHora.className = 'agenda-row';
+                
+                let htmlFilaMedia = `<div class="hora-col">${stringHoraMedia}</div>`;
+                
+                // Creamos un "cuadradito" vacío por cada profesional para esta media hora
+                empleadas.forEach(emp => {
+                    htmlFilaMedia += `<div class="agenda-celda" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+                });
+                
+                filaMediaHora.innerHTML = htmlFilaMedia;
+                agendaBody.appendChild(filaMediaHora);
+            }
+        }
+        // 4. Escuchar los cambios de fecha (Input manual y Flechas)
+        const inputFecha = document.getElementById('fechaAgendaInput');
+        const btnAnterior = document.getElementById('btnDiaAnterior');
+        const btnSiguiente = document.getElementById('btnDiaSiguiente');
+
+        if (inputFecha) {
+            // Si elige la fecha en el calendario del input
+            inputFecha.addEventListener('change', cargarTurnosAgenda);
+            
+            // Flecha para ATRÁS
+            if (btnAnterior) {
+                btnAnterior.addEventListener('click', () => {
+                    // El 'T00:00:00' evita que el navegador se confunda con la zona horaria
+                    const fechaActual = new Date(inputFecha.value + 'T00:00:00');
+                    fechaActual.setDate(fechaActual.getDate() - 1);
+                    
+                    const yyyy = fechaActual.getFullYear();
+                    const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                    const dd = String(fechaActual.getDate()).padStart(2, '0');
+                    
+                    inputFecha.value = `${yyyy}-${mm}-${dd}`;
+                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                });
+            }
+
+            // Flecha para ADELANTE
+            if (btnSiguiente) {
+                btnSiguiente.addEventListener('click', () => {
+                    const fechaActual = new Date(inputFecha.value + 'T00:00:00');
+                    fechaActual.setDate(fechaActual.getDate() + 1);
+                    
+                    const yyyy = fechaActual.getFullYear();
+                    const mm = String(fechaActual.getMonth() + 1).padStart(2, '0');
+                    const dd = String(fechaActual.getDate()).padStart(2, '0');
+                    
+                    inputFecha.value = `${yyyy}-${mm}-${dd}`;
+                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                });
+            }
+        }
+
+        // 5. Cargar los turnos del día de hoy por primera vez
+        cargarTurnosAgenda();
+    } catch (error) {
+        console.error("Error al cargar la agenda diaria:", error);
+    }
+}
+
+// --- Poner la fecha de hoy por defecto al cargar ---
+function inicializarFechaAgenda() {
+    const inputFecha = document.getElementById('fechaAgendaInput');
+    if (inputFecha) {
+        // Obtenemos la fecha actual y la formateamos a YYYY-MM-DD
+        const hoy = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoy.getDate()).padStart(2, '0');
+        
+        inputFecha.value = `${yyyy}-${mm}-${dd}`;
+    }
+}
+
+// --- Alternar entre Vista Diaria y Semanal ---
+function cambiarVistaAgenda(vista) {
+    const vistaDiaria = document.getElementById('vistaDiaria');
+    const vistaSemanal = document.getElementById('vistaSemanal');
+    const btnDiaria = document.getElementById('btnVistaDiaria');
+    const btnSemanal = document.getElementById('btnVistaSemanal');
+
+    if (vista === 'diaria') {
+        vistaDiaria.style.display = 'block';
+        vistaSemanal.style.display = 'none';
+        
+        btnDiaria.classList.add('active');
+        btnSemanal.classList.remove('active');
+    } else {
+        vistaDiaria.style.display = 'none';
+        vistaSemanal.style.display = 'block';
+        
+        btnSemanal.classList.add('active');
+        btnDiaria.classList.remove('active');
+    }
+}
+
+// --- Cargar y dibujar los turnos en la grilla ---
+async function cargarTurnosAgenda() {
+    const inputFecha = document.getElementById('fechaAgendaInput');
+    if (!inputFecha || !inputFecha.value) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${inputFecha.value}`);
+        const turnos = await respuesta.json();
+
+        // 1. Limpieza: Borramos las tarjetitas que ya estaban dibujadas
+        document.querySelectorAll('.turno-card').forEach(card => card.remove());
+
+        // TRUCO DE DEBUG: Ver en consola qué estamos recibiendo
+        console.log("Turnos para el día:", turnos);
+
+        // 2. Dibujamos los nuevos turnos
+        turnos.forEach(turno => {
+            // SOLUCIÓN ZONA HORARIA: Convertimos a Objeto Date y le pedimos la hora local
+            const fechaObj = new Date(turno.Fecha_Hora);
+            const horas = fechaObj.getHours().toString().padStart(2, '0');
+            const minutos = fechaObj.getMinutes().toString().padStart(2, '0');
+            const horaFormateada = `${horas}:${minutos}`; 
+            
+            // Buscamos la coordenada exacta
+            const celdaDestino = document.querySelector(`.agenda-celda[data-hora="${horaFormateada}"][data-id-empleada="${turno.Id_Empleada}"]`);
+
+            if (celdaDestino) {
+                celdaDestino.style.position = 'relative'; 
+
+                // Matemática visual: 2 píxeles por cada minuto
+                const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; // El || 30 es un seguro por si falla la base
+
+                const tarjeta = document.createElement('div');
+                tarjeta.className = 'turno-card';
+                tarjeta.style.height = `${alturaPixeles}px`;
+                tarjeta.innerHTML = `
+                    <div class="turno-titulo">${turno.Nombre_Clienta}</div>
+                    <div class="turno-detalle">${turno.Nombre_Servicio}</div>
+                `;
+
+                celdaDestino.appendChild(tarjeta);
+            } else {
+                console.warn(`No se encontró la celda para las ${horaFormateada} y empleada ID: ${turno.Id_Empleada}`);
+            }
+        });
+    } catch (error) {
+        console.error("Error inyectando turnos en la agenda:", error);
     }
 }
 
@@ -734,4 +929,4 @@ async function eliminarEmpleada(id) {
         console.error("Error eliminando empleada:", error);
         mostrarNotificacion("No se pudo conectar con el servidor.", "error");
     }
-}   
+}

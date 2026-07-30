@@ -411,3 +411,125 @@ body {
         transform: translateX(100%);
     }
 }
+
+/* =======================================================
+   ESTILOS DE LA AGENDA DIARIA
+======================================================== */
+.agenda-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    overflow-x: auto;
+    max-height: 70vh; /* Para que tenga scroll vertical si es muy largo */
+    overflow-y: auto;
+}
+
+.agenda-header {
+    display: flex;
+    background-color: #f8f9fa;
+    border-bottom: 2px solid #eee;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.agenda-header > div, .agenda-row > div {
+    flex: 1;
+    min-width: 150px; /* Ancho mínimo para la columna de cada profesional */
+    padding: 15px;
+    text-align: center;
+    border-right: 1px solid #eee;
+}
+
+.hora-col {
+    flex: 0 0 80px !important;
+    min-width: 80px !important;
+    background-color: #f8f9fa;
+    color: #888;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.agenda-row {
+    display: flex;
+    border-bottom: 1px solid #eee;
+    min-height: 60px; /* Altura de cada bloque de 30 minutos */
+    position: relative;
+}
+
+/* Para diferenciar las horas en punto de las medias horas */
+.agenda-row.hora-en-punto {
+    border-top: 1px solid #ddd;
+}
+
+/* =======================================================
+   ESTILOS DE PESTAÑAS (TABS) DE LA AGENDA
+======================================================== */
+.btn-tab {
+    padding: 8px 16px;
+    background-color: transparent;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    color: #666;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-tab:hover {
+    background-color: #f0f0f0;
+}
+
+.btn-tab.active {
+    background-color: var(--mostaza); /* Asumiendo que tenés esta variable de tu diseño */
+    color: white;
+    border-color: var(--mostaza);
+}
+
+/* Estilo para las celdas vacías de la agenda */
+.agenda-celda {
+    border-right: 1px solid #eee;
+    transition: background-color 0.2s ease;
+    cursor: pointer;
+}
+
+.agenda-celda:hover {
+    background-color: #fcfcfc; /* Un gris súper clarito al pasar el mouse */
+}
+
+/* =======================================================
+   ESTILOS DE LOS TURNOS EN LA GRILLA
+======================================================== */
+.turno-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 95%; /* 95% para que deje un margencito chiquito a la derecha */
+    margin-left: 2.5%;
+    background-color: rgba(212, 175, 55, 0.2); /* Un mostaza transparente */
+    border-left: 4px solid var(--mostaza, #D4AF37);
+    border-radius: 4px;
+    padding: 6px;
+    box-sizing: border-box;
+    overflow: hidden; /* Para que el texto no se escape si el turno es muy corto */
+    z-index: 5;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.turno-titulo {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.turno-detalle {
+    font-size: 11px;
+    color: #666;
+    margin-top: 2px;
+}
