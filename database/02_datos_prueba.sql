@@ -63,4 +63,7 @@ WHERE Fecha_Hora_Fin IS NULL;
 
 -- Lo vemos para confirmar
 
-SELECT * FROM Turno;
+SELECT * FROM Servicio;
+
+DELETE FROM Ingreso;
+DELETE FROM Servicio;

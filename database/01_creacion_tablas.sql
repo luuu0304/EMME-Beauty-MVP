@@ -56,3 +56,84 @@ CREATE TABLE Turno (
     CONSTRAINT FK_Turno_RecibioSena FOREIGN KEY (Id_Empleada_Recibio_Sena) REFERENCES Empleada(Id_Empleada)
 );
 GO
+ALTER TABLE Turno ADD Color VARCHAR(100) NULL;
+
+-- 6. Creamos la Tabla Categoria_Gasto
+CREATE TABLE Categoria_Gasto (
+    Id_Categoria INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL
+);
+GO
+
+-- 7. Creamos la Tabla Gasto
+CREATE TABLE Gasto (
+    Id_Gasto INT IDENTITY(1,1) PRIMARY KEY,
+    Fecha DATE NOT NULL,
+    Descripcion VARCHAR(255) NOT NULL,
+    Monto DECIMAL(12, 2) NOT NULL,
+    Id_Categoria INT,
+    
+    -- Relacionamos el gasto con su categoría
+    CONSTRAINT FK_Gasto_Categoria FOREIGN KEY (Id_Categoria) 
+    REFERENCES Categoria_Gasto(Id_Categoria)
+);
+GO
+
+-- INSERCIÓN DE LAS CATEGORÍAS INICIALES
+-- Le dejamos estas 5 opciones listas para usar en el desplegable
+INSERT INTO Categoria_Gasto (Nombre) 
+VALUES 
+    ('Insumos del Local'),
+    ('Limpieza y Mantenimiento'),
+    ('Servicios Fijos'),
+    ('Marketing y Publicidad'),
+    ('Varios / Otros');
+GO
+
+-- 8. Creacion Tabla Extra
+CREATE TABLE Extra (
+    Id_Extra INT IDENTITY(1,1) PRIMARY KEY,
+    Nombre VARCHAR(100) NOT NULL,
+    Precio DECIMAL(12, 2) NOT NULL
+);
+GO
+
+-- 9. Creacion Tabla Turno_Extra
+CREATE TABLE Turno_Extra (
+    Id_Turno_Extra INT IDENTITY(1,1) PRIMARY KEY,
+    Id_Turno INT NOT NULL, 
+    Id_Extra INT NOT NULL,
+    
+    CONSTRAINT FK_TurnoExtra_Turno FOREIGN KEY (Id_Turno) REFERENCES Turno(Id_Turno),
+    CONSTRAINT FK_TurnoExtra_Extra FOREIGN KEY (Id_Extra) REFERENCES Extra(Id_Extra)
+);
+GO
+
+--10. Creacion Tabla Ingresos
+CREATE TABLE Ingreso (
+    Id_Ingreso INT IDENTITY(1,1) PRIMARY KEY,
+    Id_Turno INT NOT NULL,
+    Fecha DATE NOT NULL,
+    Monto_Total DECIMAL(12, 2) NOT NULL,
+    Medio_Pago VARCHAR(50) NOT NULL, -- 'Efectivo', 'Transferencia'
+    Descuento_Aplicado DECIMAL(12, 2) DEFAULT 0,
+    
+    CONSTRAINT FK_Ingreso_Turno FOREIGN KEY (Id_Turno) REFERENCES Turno(Id_Turno)
+);
+GO
+
+--INSERCIÓN DE LOS EXTRAS INICIALES
+INSERT INTO Extra (Nombre, Precio) 
+VALUES 
+    ('Francesitas', 2000.00),
+    ('Cat Eye / Polvos', 2000.00),
+    ('Full Diseño', 3000.00),
+    ('Retiro de otro salón (Simple)', 3000.00),
+    ('Retiro de otro salón (Completo)', 5000.00),
+    ('Spa Jelly', 5000.00);
+
+-- 1. Hacemos que el Id_Turno sea opcional (porque un ingreso manual no lo tiene)
+ALTER TABLE Ingreso ALTER COLUMN Id_Turno INT NULL;
+
+-- 2. Agregamos una columna para anotar el detalle (Ej: "Gift Card", "Aceite para cutículas")
+ALTER TABLE Ingreso ADD Concepto VARCHAR(150) NULL;

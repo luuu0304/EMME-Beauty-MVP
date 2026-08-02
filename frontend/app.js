@@ -26,6 +26,8 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarClientas();
     cargarEmpleadas();
     cargarServicios();
+    cargarCategoriasGasto()
+    cargarExtrasDisponibles()
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
 });
@@ -66,51 +68,69 @@ const botonesMenu = document.querySelectorAll('.menu-item');
 const seccionTurnos = document.getElementById('seccionTurnos');
 const seccionClientas = document.getElementById('seccionClientas');
 const seccionEmpleados = document.getElementById('seccionEmpleados');
+const seccionGastos = document.getElementById('seccionGastos');
+const seccionIngresos = document.getElementById('seccionIngresos'); 
 
 const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
 const btnNuevaClienta = document.getElementById('btnNuevaClienta');
 const buscadorClientas = document.getElementById('buscadorClientas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
+const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
-        // Cambiar botón activo
+        // 1. Cambiar la pestaña activa en el menú lateral
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
-        // Ocultar todas las secciones
+        // 2. Ocultar TODAS las secciones centrales
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
+        seccionGastos.style.display = 'none';
+        // 2.1 Ocultamos la nueva sección
+        if(seccionIngresos) seccionIngresos.style.display = 'none'; 
 
+        // 3. APAGAR TODOS LOS BOTONES SUPERIORES POR DEFECTO
+        btnNuevoTurno.style.display = 'none';
+        btnNuevaClienta.style.display = 'none';
+        btnNuevaEmpleada.style.display = 'none';
+        btnNuevoGasto.style.display = 'none';
+        buscadorClientas.style.display = 'none';
+
+        // 4. Prender solo lo que corresponde según la pestaña
         const opcionSeleccionada = boton.textContent.trim();
 
         if (opcionSeleccionada === 'Turnos') {
             seccionTurnos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Turnos';
-            btnNuevaEmpleada.style.display = 'none';
-            btnNuevoTurno.style.display = 'block';
-            btnNuevaClienta.style.display = 'none';
-            buscadorClientas.style.display = 'none';
+            btnNuevoTurno.style.display = 'block'; 
 
         } else if (opcionSeleccionada === 'Clientas') {
             seccionClientas.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Clientas';
-            btnNuevaEmpleada.style.display = 'none';
-            btnNuevoTurno.style.display = 'none';
-            btnNuevaClienta.style.display = 'block';
-            buscadorClientas.style.display = 'block';
+            btnNuevaClienta.style.display = 'block'; 
+            buscadorClientas.style.display = 'block'; 
             cargarClientas();
 
         } else if (opcionSeleccionada === 'Empleados') {
             seccionEmpleados.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Empleados';
-            btnNuevaEmpleada.style.display = 'block';
-            btnNuevoTurno.style.display = 'none';
-            btnNuevaClienta.style.display = 'none';
-            buscadorClientas.style.display = 'none';
+            btnNuevaEmpleada.style.display = 'block'; 
             cargarEmpleadas();
+
+        } else if (opcionSeleccionada === 'Gastos') {
+            seccionGastos.style.display = 'block';
+            tituloHeader.textContent = 'Gestión de Gastos';
+            btnNuevoGasto.style.display = 'block'; 
+            cargarGastos(); 
+            
+        // 4.1 Agregamos la lógica para la pestaña de Ingresos
+        } else if (opcionSeleccionada === 'Ingresos') {
+            if(seccionIngresos) seccionIngresos.style.display = 'block';
+            tituloHeader.textContent = 'Gestión de Ingresos';
+            cargarIngresos();
         }
     });
 });
@@ -203,31 +223,27 @@ async function guardarTurno() {
             mostrarNotificacion("Por favor, completá nombre y apellido.", "warning");
             return; 
         }
-
         try {
-            const responseClienta = await fetch('http://localhost:3000/api/clientas', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    Nombre: nombreExp, 
-                    Apellido: apellidoExp,
-                    Fecha_Nac: null,
-                    Telefono: null, 
-                    Ig: null 
-                })
-            });
-            
-            if (!responseClienta.ok) throw new Error('Error al crear clienta express');
+        const respuesta = await fetch('http://localhost:3000/api/turnos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoTurno)
+        });
 
-            const nuevaClienta = await responseClienta.json();
-            idClientaFinal = nuevaClienta.Id_Clienta || nuevaClienta.id; 
-            cargarClientas(); 
-
-        } catch (error) {
-            console.error("Fallo al crear clienta express:", error);
-            mostrarNotificacion("Hubo un error al registrar a la clienta.", "error");
-            return; 
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
+            cerrarModalTurno();
+            location.reload();
+        } else {
+            // AHORA LEEMOS EL MENSAJE DEL BACKEND
+            const mensajeError = await respuesta.text();
+            // Mostramos el mensaje exacto que nos devolvió SQL/Node
+            mostrarNotificacion(`Ups: ${mensajeError}`, "error");
         }
+    } catch (error) {
+        console.error("Error enviando el turno:", error);
+        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
 
     } else {
         idClientaFinal = document.getElementById('selectClientaTurno').value;
@@ -253,7 +269,7 @@ async function guardarTurno() {
         return;
     }
 
-    const fechaHoraCompleta = `${fecha}T${hora}`;
+    const fechaHoraCompleta = `${fecha}T${hora}:00`;
     const nuevoTurno = {
         Id_Clienta: parseInt(idClientaFinal), 
         Id_Empleada: parseInt(idEmpleada),
@@ -502,6 +518,18 @@ async function cargarTurnosAgenda() {
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'turno-card';
                 tarjeta.style.height = `${alturaPixeles}px`;
+                tarjeta.style.cursor = 'pointer';
+
+                tarjeta.onclick = () => {
+                    const precioServicio = turno.Precio_Base || 0; 
+                    abrirModalDetalleTurno(
+                        turno.Id_Turno, 
+                        turno.Nombre_Clienta, 
+                        turno.Nombre_Servicio, 
+                        precioServicio,
+                        turno.Estado, 
+                        turno.Color);
+                };
                 tarjeta.innerHTML = `
                     <div class="turno-titulo">${turno.Nombre_Clienta}</div>
                     <div class="turno-detalle">${turno.Nombre_Servicio}</div>
@@ -636,7 +664,27 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
     }
 }
 
-// --- Cargar Clientas (Dibuja las tarjetas y llena el select de turnos) ---
+// --- Alternar Vistas de Clientas ---
+function cambiarVistaClientas(vista) {
+    const vistaTarjetas = document.getElementById('vistaClientasTarjetas');
+    const vistaLista = document.getElementById('vistaClientasListado');
+    const btnTarjetas = document.getElementById('btnVistaTarjetas');
+    const btnLista = document.getElementById('btnVistaLista');
+
+    if (vista === 'tarjetas') {
+        vistaTarjetas.style.display = 'grid'; // O el display que use tu clase cards-grid
+        vistaLista.style.display = 'none';
+        btnTarjetas.classList.add('active');
+        btnLista.classList.remove('active');
+    } else {
+        vistaTarjetas.style.display = 'none';
+        vistaLista.style.display = 'block';
+        btnLista.classList.add('active');
+        btnTarjetas.classList.remove('active');
+    }
+}
+
+// --- Cargar Clientas (Genera tarjetas y filas simultáneamente) ---
 async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
@@ -654,25 +702,27 @@ async function cargarClientas() {
             });
         }
 
-        // 2. Dibujar tarjetas
-        const contenedor = document.querySelector('#seccionClientas .cards-grid');
-        if (!contenedor) return;
-
-        contenedor.innerHTML = '';
+        // 2. Traer los dos contenedores
+        const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
+        const tbodyLista = document.getElementById('tablaClientasBody');
+        
+        if (contenedorTarjetas) contenedorTarjetas.innerHTML = '';
+        if (tbodyLista) tbodyLista.innerHTML = '';
         
         clientas.forEach(clienta => {
-            const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
-            let fechaNac = 'No registrada';
+            let fechaNac = '-';
             if (clienta.Fecha_Nac) {
                 fechaNac = new Date(clienta.Fecha_Nac).toLocaleDateString('es-AR');
             }
+            const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
+            // A. DIBUJAR TARJETA
             const tarjetaHTML = `
-                <div class="card">
+                <div class="card item-clienta-busqueda"> <!-- Clase unificada para buscar -->
                     <div class="card-header">
                         <div class="avatar">${iniciales}</div>
                         <div class="client-info">
-                            <h3>${clienta.Nombre} ${clienta.Apellido}</h3>
+                            <h3 class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</h3>
                             <span>Cumple: ${fechaNac}</span>
                         </div>
                     </div>
@@ -681,13 +731,29 @@ async function cargarClientas() {
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
                     <div class="card-actions">
-                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️ Editar</button>
-                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️ Mirar</button>
+                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
+                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
                         <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">+ Turno</button>
                     </div>
                 </div>
             `;
-            contenedor.innerHTML += tarjetaHTML;
+            if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
+
+            // B. DIBUJAR FILA DE LISTA
+            const filaHTML = `
+                <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
+                    <td style="padding: 12px 15px;">${clienta.Telefono || '-'}</td>
+                    <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
+                    <td style="padding: 12px 15px;">${fechaNac}</td>
+                    <td style="padding: 12px 15px; text-align: center;">
+                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
+                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
+                        <button class="btn-icon" title="Agendar Turno" style="color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">📅</button>
+                    </td>
+                </tr>
+            `;
+            if (tbodyLista) tbodyLista.innerHTML += filaHTML;
         });
     } catch (error) {
         console.error("Error conectando con la API de clientas:", error);
@@ -743,19 +809,21 @@ async function guardarClienta() {
     }
 }
 
-// --- Buscador de Clientas ---
+// --- Buscador de Clientas Universal ---
 const inputBuscador = document.getElementById('buscadorClientas');
 if (inputBuscador) {
     inputBuscador.addEventListener('input', function(evento) {
         const textoBuscado = evento.target.value.toLowerCase();
-        const tarjetas = document.querySelectorAll('#seccionClientas .card');
         
-        tarjetas.forEach(tarjeta => {
-            const nombreClienta = tarjeta.querySelector('h3').textContent.toLowerCase();
+        // Agarramos TANTO las tarjetas COMO las filas de la tabla
+        const elementosClienta = document.querySelectorAll('.item-clienta-busqueda');
+        
+        elementosClienta.forEach(elemento => {
+            const nombreClienta = elemento.querySelector('.nombre-para-buscar').textContent.toLowerCase();
             if (nombreClienta.includes(textoBuscado)) {
-                tarjeta.style.display = ''; 
+                elemento.style.display = ''; // Lo vuelve a mostrar en su formato original
             } else {
-                tarjeta.style.display = 'none'; 
+                elemento.style.display = 'none'; // Lo oculta
             }
         });
     });
@@ -908,6 +976,210 @@ async function cargarEmpleadas() {
     }
 }
 
+// ==========================================================================
+// 6. MÓDULO DE GASTOS
+// ==========================================================================
+
+const modalGasto = document.getElementById('modalNuevoGasto');
+
+function abrirModalGasto() {
+    if (modalGasto) modalGasto.classList.add('active');
+}
+
+function cerrarModalGasto() {
+    if (modalGasto) modalGasto.classList.remove('active');
+}
+
+if (modalGasto) {
+    modalGasto.addEventListener('click', function(e) {
+        if(e.target === modalGasto) cerrarModalGasto();
+    });
+}
+
+function prepararNuevoGasto() {
+    document.getElementById('idGastoOculto').value = '';
+    document.getElementById('descGastoInput').value = '';
+    document.getElementById('montoGastoInput').value = '';
+    document.getElementById('selectCategoriaGasto').value = '';
+    
+    // Ponemos la fecha de hoy por defecto
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dd = String(hoy.getDate()).padStart(2, '0');
+    document.getElementById('fechaGastoInput').value = `${yyyy}-${mm}-${dd}`;
+    
+    document.getElementById('tituloModalGasto').textContent = 'Registrar Nuevo Gasto';
+    abrirModalGasto();
+}
+
+// Llenar el desplegable con las categorías de SQL
+async function cargarCategoriasGasto() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const categorias = await respuesta.json();
+        
+        const select = document.getElementById('selectCategoriaGasto');
+        if (select) {
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            categorias.forEach(cat => {
+                select.innerHTML += `<option value="${cat.Id_Categoria}">${cat.Nombre}</option>`;
+            });
+        }
+    } catch (error) {
+        console.error("Error conectando con la API de categorías:", error);
+    }
+}
+
+// Variable global para guardar todos los gastos en memoria
+let memoriaGastos = [];
+
+// Llenar el desplegable con las categorías (Actualizado para llenar también el filtro)
+async function cargarCategoriasGasto() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const categorias = await respuesta.json();
+        
+        const selectModal = document.getElementById('selectCategoriaGasto');
+        const selectFiltro = document.getElementById('filtroCategoriaGasto');
+        
+        if (selectModal) {
+            selectModal.innerHTML = '<option value="">Seleccione...</option>';
+            categorias.forEach(cat => selectModal.innerHTML += `<option value="${cat.Id_Categoria}">${cat.Nombre}</option>`);
+        }
+        if (selectFiltro) {
+            selectFiltro.innerHTML = '<option value="todas">Todas las categorías</option>';
+            categorias.forEach(cat => selectFiltro.innerHTML += `<option value="${cat.Nombre}">${cat.Nombre}</option>`);
+        }
+    } catch (error) {
+        console.error("Error conectando con la API de categorías:", error);
+    }
+}
+
+// Traer los gastos de la base de datos
+async function cargarGastos() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/gastos');
+        memoriaGastos = await respuesta.json(); // Guardamos todo en memoria
+        aplicarFiltrosGastos(); // Dibujamos pasando por el filtro
+    } catch (error) {
+        console.error("Error conectando con la API de gastos:", error);
+    }
+}
+
+// Función que filtra y dibuja la tabla (AHORA CON AÑO)
+function aplicarFiltrosGastos() {
+    const mesSeleccionado = document.getElementById('filtroMesGasto').value;
+    const catSeleccionada = document.getElementById('filtroCategoriaGasto').value;
+    
+    // Capturamos el año (si existe el filtro, si no, 'todos')
+    const filtroAnio = document.getElementById('filtroAnioGasto');
+    const anioSeleccionado = filtroAnio ? filtroAnio.value : 'todos';
+    
+    const gastosFiltrados = memoriaGastos.filter(gasto => {
+        const fechaObj = new Date(gasto.Fecha);
+        const mesGasto = fechaObj.getUTCMonth().toString();
+        const anioGasto = fechaObj.getUTCFullYear().toString(); // Extraemos el año
+        const categoriaGasto = gasto.Nombre_Categoria || 'Sin tipo';
+        
+        const pasaFiltroMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
+        const pasaFiltroCat = (catSeleccionada === 'todas') || (categoriaGasto === catSeleccionada);
+        const pasaFiltroAnio = (anioSeleccionado === 'todos') || (anioGasto === anioSeleccionado);
+        
+        return pasaFiltroMes && pasaFiltroCat && pasaFiltroAnio;
+    });
+    
+    dibujarTablaGastos(gastosFiltrados);
+}
+
+// Función exclusiva para pintar el HTML
+function dibujarTablaGastos(listaGastos) {
+    const tbody = document.getElementById('tablaGastosBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    
+    if (listaGastos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 30px; color: #888;">No se encontraron gastos para estos filtros.</td></tr>';
+        return;
+    }
+
+    listaGastos.forEach(gasto => {
+        const fechaObj = new Date(gasto.Fecha);
+        const fechaLimpia = new Date(fechaObj.getTime() + fechaObj.getTimezoneOffset() * 60000).toLocaleDateString('es-AR');
+        
+        const tr = document.createElement('tr');
+        tr.style.borderBottom = "1px solid #eee";
+        
+        tr.innerHTML = `
+            <td style="padding: 12px;">${fechaLimpia}</td>
+            <td style="padding: 12px;"><span style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555;">${gasto.Nombre_Categoria || 'Sin tipo'}</span></td>
+            <td style="padding: 12px;">${gasto.Descripcion}</td>
+            <td style="padding: 12px; font-weight: bold; color: #d9534f;">$${gasto.Monto.toLocaleString('es-AR')}</td>
+            <td style="padding: 12px; text-align: center;">
+                <button class="btn-icon" style="color: #d9534f;" onclick="eliminarGasto(${gasto.Id_Gasto})">🗑️</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+// Guardar el Gasto en la base de datos
+async function guardarGasto() {
+    const desc = document.getElementById('descGastoInput').value.trim();
+    const fecha = document.getElementById('fechaGastoInput').value;
+    const monto = document.getElementById('montoGastoInput').value;
+    const idCategoria = document.getElementById('selectCategoriaGasto').value;
+
+    if (!desc || !fecha || !monto) {
+        mostrarNotificacion("Por favor completá los campos obligatorios (*).", "warning");
+        return;
+    }
+
+    const nuevoGasto = {
+        Fecha: fecha,
+        Descripcion: desc,
+        Monto: parseFloat(monto),
+        Id_Categoria: idCategoria ? parseInt(idCategoria) : null
+    };
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/gastos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoGasto)
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Gasto registrado con éxito! 💸", "success");
+            cerrarModalGasto();
+            cargarGastos(); 
+        } else {
+            mostrarNotificacion("Hubo un error al guardar el gasto.", "error");
+        }
+    } catch (error) {
+        console.error("Error en el envío:", error);
+        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
+}
+
+async function eliminarGasto(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés borrar este registro de gasto?");
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/gastos/${id}`, { method: 'DELETE' });
+        if (respuesta.ok) {
+            mostrarNotificacion("Gasto eliminado con éxito.", "success");
+            cargarGastos();
+        } else {
+            mostrarNotificacion("No se pudo eliminar el gasto.", "error");
+        }
+    } catch (error) {
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
 // --- Eliminar Empleada (Con Promesa Estética) ---
 async function eliminarEmpleada(id) {
     const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
@@ -928,5 +1200,433 @@ async function eliminarEmpleada(id) {
     } catch (error) {
         console.error("Error eliminando empleada:", error);
         mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
+}
+
+// --- Lógica del Modal de Nueva Categoría ---
+const modalCategoria = document.getElementById('modalNuevaCategoria');
+
+function abrirModalNuevaCategoria() {
+    document.getElementById('nombreNuevaCategoriaInput').value = '';
+    if (modalCategoria) modalCategoria.classList.add('active');
+}
+
+function cerrarModalNuevaCategoria() {
+    if (modalCategoria) modalCategoria.classList.remove('active');
+}
+
+async function guardarNuevaCategoria() {
+    const nombre = document.getElementById('nombreNuevaCategoriaInput').value.trim();
+    
+    if (!nombre) {
+        mostrarNotificacion("Por favor, escribí un nombre para la categoría.", "warning");
+        return;
+    }
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Nombre: nombre })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Categoría creada con éxito!", "success");
+            cerrarModalNuevaCategoria();
+            
+            // Volvemos a cargar las categorías para que aparezca en el desplegable
+            await cargarCategoriasGasto(); 
+        } else {
+            mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
+        }
+    } catch (error) {
+        console.error("Error conectando con el servidor:", error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// ==========================================================================
+// 7. MÓDULO DE INGRESOS
+// ==========================================================================
+async function cargarIngresos() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/ingresos');
+        const ingresos = await respuesta.json();
+        
+        const tbody = document.getElementById('tablaIngresosBody');
+        if (!tbody) return;
+
+        tbody.innerHTML = ''; 
+
+        if (ingresos.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px;">Aún no hay cobros registrados.</td></tr>`;
+            return;
+        }
+
+        ingresos.forEach(ingreso => {
+            // 1. EXTRAEMOS LA FECHA SEGURA (YYYY-MM-DD)
+            const fechaCorta = ingreso.Fecha.split('T')[0]; 
+            
+            // 2. LA FORMATEAMOS PARA QUE SE VEA LINDA (DD/MM/YYYY)
+            const partes = fechaCorta.split('-');
+            const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
+
+            // Lógica para diferenciar turnos de ingresos manuales
+            const clientaMostrar = ingreso.Nombre_Clienta ? ingreso.Nombre_Clienta : '<span style="color:#aaa;">- Mostrador -</span>';
+            const servicioMostrar = ingreso.Concepto ? `Extra: ${ingreso.Concepto}` : ingreso.Nombre_Servicio;
+
+            // 3. ARMAMOS LA FILA Y LE GUARDAMOS LA FECHA INVISIBLE (data-fecha)
+            const filaHTML = `
+                <tr style="border-bottom: 1px solid #eee;" data-fecha="${fechaCorta}">
+                    <td style="padding: 12px;">${fechaFormateada}</td>
+                    <td style="padding: 12px; font-weight: 500;">${clientaMostrar}</td>
+                    <td style="padding: 12px; color: #555;">${servicioMostrar}</td>
+                    <td style="padding: 12px;">
+                        <span style="background: #eef2f5; padding: 4px 8px; border-radius: 4px; font-size: 12px;">${ingreso.Medio_Pago}</span>
+                    </td>
+                    <td style="padding: 12px; text-align: right; font-weight: bold; color: #28a745;">
+                        $${ingreso.Monto_Total.toLocaleString('es-AR')}
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += filaHTML;
+        }); 
+        // Una vez que se cargan todos los datos, llamamos al filtro para que calcule el total inicial
+        filtrarIngresos();
+
+    } catch (error) {
+        console.error("Error al cargar los ingresos:", error);
+        document.getElementById('tablaIngresosBody').innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 20px; color: red;">Error al cargar los datos.</td></tr>`;
+    }
+}
+
+// Función para filtrar los ingresos y sumar el total visible
+function filtrarIngresos() {
+    const textoBuscado = document.getElementById('filtroIngresos').value.toLowerCase();
+    const fechaBuscadaInput = document.getElementById('filtroFechaIngresos').value; 
+
+    const filas = document.querySelectorAll('#tablaIngresosBody tr');
+    let sumaTotal = 0; // Arrancamos el contador en 0
+
+    filas.forEach(fila => {
+        if (fila.cells.length === 1) return; // Ignorar la fila de "Cargando..."
+
+        const contenidoFila = fila.textContent.toLowerCase();
+        const fechaFila = fila.getAttribute('data-fecha'); 
+
+        const cumpleTexto = contenidoFila.includes(textoBuscado);
+        const cumpleFecha = fechaBuscadaInput === "" || fechaFila === fechaBuscadaInput;
+
+        if (cumpleTexto && cumpleFecha) {
+            fila.style.display = '';
+            
+            // Si la fila se muestra, extraemos el número y lo sumamos
+            // La plata está en la última columna (índice 4)
+            const textoMonto = fila.cells[4].textContent;
+            
+            // Limpiamos el texto para que JavaScript entienda que es un número
+            // (Le sacamos el símbolo $, los puntos de los miles, y convertimos la coma en punto decimal si hubiera)
+            const numeroLimpio = parseFloat(textoMonto.replace('$', '').replace(/\./g, '').replace(',', '.'));
+            
+            if (!isNaN(numeroLimpio)) {
+                sumaTotal += numeroLimpio;
+            }
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+
+    // Escribimos el resultado final en nuestro nuevo pie de tabla
+    const celdaTotal = document.getElementById('totalIngresosFiltrados');
+    if (celdaTotal) {
+        celdaTotal.textContent = '$' + sumaTotal.toLocaleString('es-AR');
+    }
+}
+
+// ==========================================================================
+// 8. MÓDULO DE COBRO Y EXTRAS
+// ==========================================================================
+
+const modalDetalleTurno = document.getElementById('modalDetalleTurno');
+let precioBaseActual = 0;
+const SENA_ABONADA = 8000; // Valor fijo de la seña
+
+function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase, estado, color) {
+    precioBaseActual = parseFloat(precioBase) || 0;
+    
+    document.getElementById('idTurnoCobroOculto').value = idTurno;
+    document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
+    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${servicioBase}`;
+    document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
+    
+    // Cargamos el color y el estado
+    // Limpiamos el input para que puedan escribir uno nuevo
+    document.getElementById('colorTurnoInput').value = '';
+    
+    // Armamos la lista de colores guardados
+    const contenedorColores = document.getElementById('listaColoresGuardados');
+    contenedorColores.innerHTML = ''; // Limpiar anteriores
+    
+    if (color) {
+        // Separamos los colores por el palito ' | ' que le pusimos en la base de datos
+        const arrayColores = color.split(' | ');
+        arrayColores.forEach(c => {
+            contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${c}</span>`;
+        });
+    }
+    const badgeEstado = document.getElementById('estadoTurnoBadge');
+    badgeEstado.textContent = estado || 'Pendiente';
+    
+    // Referencias a los botones e inputs
+    const btnCobrar = document.getElementById('btnConfirmarCobro'); // Asegurate que tu botón HTML tenga este ID
+    const btnGuardar = document.getElementById('btnGuardarDetalles');
+    const inputColor = document.getElementById('colorTurnoInput');
+    const inputDescuento = document.getElementById('descuentoCobroInput');
+    const checkboxes = document.querySelectorAll('.check-extra');
+    
+    // LÓGICA DE BLOQUEO SI YA ESTÁ PAGADO
+    if (estado === 'Pagado') {
+        badgeEstado.style.background = '#d4edda';
+        badgeEstado.style.color = '#155724';
+        
+        btnCobrar.disabled = true;
+        btnCobrar.style.background = '#ccc';
+        btnCobrar.textContent = 'Turno ya cobrado';
+        btnCobrar.style.cursor = 'not-allowed';
+        
+        btnGuardar.style.display = 'none';
+        inputColor.disabled = true;
+        inputDescuento.disabled = true;
+        checkboxes.forEach(chk => chk.disabled = true);
+    } else {
+        // Si está pendiente o en progreso, dejamos todo habilitado
+        badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
+        badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
+        
+        btnCobrar.disabled = false;
+        btnCobrar.style.background = '#28a745'; 
+        btnCobrar.textContent = 'Confirmar y Cobrar';
+        btnCobrar.style.cursor = 'pointer';
+        
+        btnGuardar.style.display = 'inline-block';
+        inputColor.disabled = false;
+        inputDescuento.disabled = false;
+        checkboxes.forEach(chk => chk.disabled = false);
+    }
+
+    document.getElementById('descuentoCobroInput').value = 0;
+    checkboxes.forEach(chk => chk.checked = false);
+    recalcularTotalCobro();
+    
+    if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
+}
+
+// Nueva función que usan las chicas para guardar el color sin cobrar
+async function guardarDetallesTurno() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const colorElegido = document.getElementById('colorTurnoInput').value;
+    
+    if (!colorElegido.trim()) {
+        mostrarNotificacion("Escribí un color primero", "error");
+        return;
+    }
+    
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Color: colorElegido })
+        });
+        
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Color agregado!", "success");
+            
+            // Acá hacemos lo que pediste: recargamos la página cortito para que todo se actualice
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            mostrarNotificacion("Hubo un error al guardar.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+function cerrarModalDetalleTurno() {
+    if (modalDetalleTurno) modalDetalleTurno.classList.remove('active');
+}
+
+if (modalDetalleTurno) {
+    modalDetalleTurno.addEventListener('click', function(e) {
+        if(e.target === modalDetalleTurno) cerrarModalDetalleTurno();
+    });
+}
+
+// Traer la lista de extras desde SQL y armar los checkboxes
+async function cargarExtrasDisponibles() {
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/extras');
+        const extras = await respuesta.json();
+
+        const contenedor = document.getElementById('contenedorExtras');
+        if (!contenedor) return;
+
+        contenedor.innerHTML = ''; // Limpiar el texto "Cargando..."
+
+        extras.forEach(extra => {
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.justifyContent = 'space-between';
+            div.style.alignItems = 'center';
+            div.style.padding = '8px 0';
+            div.style.borderBottom = '1px solid #f9f9f9';
+
+            div.innerHTML = `
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px;">
+                    <input type="checkbox" class="check-extra" value="${extra.Precio}" data-id="${extra.Id_Extra}" onchange="recalcularTotalCobro()" style="cursor: pointer;">
+                    ${extra.Nombre}
+                </label>
+                <span style="color: #888; font-size: 13px;">+$${extra.Precio.toLocaleString('es-AR')}</span>
+            `;
+            contenedor.appendChild(div);
+        });
+    } catch (error) {
+        console.error("Error cargando extras:", error);
+    }
+}
+
+// LA MAGIA DE LA SUMA: Se ejecuta cada vez que tildan un extra o cambian el descuento
+function recalcularTotalCobro() {
+    let sumaExtras = 0;
+    
+    // Sumar todos los extras que estén tildados en ese momento
+    const checkboxes = document.querySelectorAll('.check-extra:checked');
+    checkboxes.forEach(chk => {
+        sumaExtras += parseFloat(chk.value);
+    });
+
+    // Obtener lo que hayan tipeado en "Descuento"
+    const descuentoInput = document.getElementById('descuentoCobroInput').value;
+    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+
+    // Fórmula: Precio Base + Extras - Descuento - Seña
+    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    
+    // Evitar que el total dé negativo
+    if (totalFinal < 0) totalFinal = 0;
+
+    // Pintar el resultado verde gigante en el HTML
+    document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
+}
+
+// Escuchar si tipean en la cajita de descuento para recalcular en vivo
+const inputDescuento = document.getElementById('descuentoCobroInput');
+if (inputDescuento) {
+    inputDescuento.addEventListener('input', recalcularTotalCobro);
+}
+
+// Función para mandar la plata a la base de datos
+async function confirmarCobroTurno() {
+    // 1. Recolectar la información básica
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const medioPago = document.getElementById('selectMedioPago').value;
+    
+    const descuentoInput = document.getElementById('descuentoCobroInput').value;
+    const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+    
+    // 2. Recolectar los IDs de los extras que están tildados
+    const extrasSeleccionados = [];
+    let sumaExtras = 0;
+    
+    const checkboxes = document.querySelectorAll('.check-extra:checked');
+    checkboxes.forEach(chk => {
+        extrasSeleccionados.push(parseInt(chk.getAttribute('data-id')));
+        sumaExtras += parseFloat(chk.value);
+    });
+
+    // 3. Calcular el total exacto que se va a enviar
+    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    if (totalFinal < 0) totalFinal = 0;
+
+    // Armamos el paquetito de datos para enviar
+    const datosCobro = {
+        idTurno: parseInt(idTurno),
+        montoTotal: totalFinal,
+        medioPago: medioPago,
+        descuento: descuento,
+        extras: extrasSeleccionados
+    };
+
+    try {
+        // Le tocamos la puerta al backend
+        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(datosCobro)
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Cobro registrado con éxito!", "success"); 
+            cerrarModalDetalleTurno();
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            mostrarNotificacion("Hubo un error al intentar cobrar.", "error");
+        }
+    } catch (error) {
+        console.error("Error conectando con el servidor:", error);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
+
+function abrirModalNuevoIngreso() {
+    document.getElementById('conceptoIngresoManual').value = '';
+    document.getElementById('montoIngresoManual').value = '';
+    if (modalNuevoIngreso) modalNuevoIngreso.classList.add('active');
+}
+
+function cerrarModalNuevoIngreso() {
+    if (modalNuevoIngreso) modalNuevoIngreso.classList.remove('active');
+}
+
+async function guardarIngresoManual() {
+    const concepto = document.getElementById('conceptoIngresoManual').value;
+    const monto = document.getElementById('montoIngresoManual').value;
+    const medioPago = document.getElementById('pagoIngresoManual').value;
+
+    if (!concepto || !monto) {
+        mostrarNotificacion("Por favor completá el concepto y el monto.", "error");
+        return;
+    }
+
+    try {
+        const respuesta = await fetch('http://localhost:3000/api/ingresos/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                Concepto: concepto,
+                Monto_Total: parseFloat(monto),
+                Medio_Pago: medioPago
+            })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Ingreso extra registrado!", "success");
+            cerrarModalNuevoIngreso();
+            cargarIngresos(); // Recarga la tabla al instante sin recargar la página entera
+        } else {
+            mostrarNotificacion("Error al guardar el ingreso.", "error");
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        mostrarNotificacion("Error de conexión.", "error");
     }
 }

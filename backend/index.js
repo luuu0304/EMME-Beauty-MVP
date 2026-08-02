@@ -147,10 +147,13 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                 SELECT 
                     t.Id_Turno, 
                     t.Fecha_Hora, 
-                    c.Nombre + ' ' + c.Apellido AS Nombre_Clienta, /* ¡Acá estaba el fix! */
+                    c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
                     s.Nombre AS Nombre_Servicio, 
-                    s.Duracion_Minutos, 
-                    t.Id_Empleada
+                    s.Duracion_Minutos,
+                    s.Precio_Base, 
+                    t.Id_Empleada,
+                    t.Estado,
+                    t.Color
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -247,7 +250,7 @@ app.put('/api/empleadas/:id', async (req, res) => {
 
 // --- SECCIÓN: TURNOS ---
 
-// Obtener todos los turnos formateados para FullCalendar
+// Obtener todos los turnos formateados para la Agenda
 app.get('/api/turnos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -255,9 +258,14 @@ app.get('/api/turnos', async (req, res) => {
         const resultado = await pool.request().query(`
             SELECT 
                 t.Id_Turno AS id,
+                t.Id_Turno,
+                t.Id_Empleada,
                 c.Nombre + ' ' + c.Apellido + ' - ' + s.Nombre + ' (' + e.Nombre_Ap + ')' AS title,
                 t.Fecha_Hora AS start,
-                t.Fecha_Hora_Fin AS [end]
+                t.Fecha_Hora_Fin AS [end],
+                c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                s.Nombre AS Nombre_Servicio,
+                s.Precio AS Precio
             FROM Turno t
             JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
             JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
@@ -271,26 +279,36 @@ app.get('/api/turnos', async (req, res) => {
     }
 });
 
-// Recibir los datos del formulario y guardar un nuevo turno
+// Recibir los datos del formulario y guardar un nuevo turno con validación
 app.post('/api/turnos', async (req, res) => {
+    const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora } = req.body;
+
     try {
-        const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora } = req.body;
         let pool = await sql.connect(dbConfig);
+
+        // 1. VALIDACIÓN: Revisar si la profesional ya tiene un turno en esa fecha y hora exacta
+        const chequeo = await pool.request().query(`
+            SELECT Id_Turno FROM Turno 
+            WHERE Id_Empleada = ${Id_Empleada} AND Fecha_Hora = '${Fecha_Hora}'
+        `);
+
+        // Si recordset tiene al menos 1 elemento, significa que el horario está ocupado
+        if (chequeo.recordset.length > 0) {
+            // Frenamos todo y le mandamos un error 400 (Bad Request) al frontend
+            return res.status(400).send("La profesional ya tiene un turno agendado en ese horario.");
+        }
+
+        // 2. Si el horario está libre, procedemos a guardar el turno
+        await pool.request().query(`
+            INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora) 
+            VALUES (${Id_Clienta}, ${Id_Empleada}, ${Id_Servicio}, '${Fecha_Hora}')
+        `);
         
-        await pool.request()
-            .input('Id_Clienta', sql.Int, Id_Clienta)
-            .input('Id_Empleada', sql.Int, Id_Empleada)
-            .input('Id_Servicio', sql.Int, Id_Servicio)
-            .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
-            .query(`
-                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Fecha_Hora_Fin, Estado)
-                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, DATEADD(minute, 60, @Fecha_Hora), 'Pendiente')
-            `);
-            
-        res.status(201).send("Turno creado correctamente");
-    } catch (error) {
-        console.error("Error al insertar el turno:", error);
-        res.status(500).send("Error interno al guardar el turno");
+        res.status(201).json({ message: "¡Turno creado exitosamente!" });
+
+    } catch (err) {
+        console.error("Error al crear turno:", err);
+        res.status(500).send("Error interno del servidor");
     }
 });
 
@@ -308,7 +326,280 @@ app.get('/api/servicios', async (req, res) => {
         res.status(500).send("Error interno del servidor");
     }
 });
+// ==========================================
+// MÓDULO DE GASTOS
+// ==========================================
 
+// 1. Obtener las categorías para el menú desplegable
+app.get('/api/categorias-gastos', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query("SELECT * FROM Categoria_Gasto ORDER BY Nombre");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo categorías de gastos:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// 2. Obtener todos los gastos para la tabla
+app.get('/api/gastos', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        // Hacemos un JOIN para traer el nombre de la categoría en lugar del número
+        let result = await pool.request().query(`
+            SELECT 
+                g.Id_Gasto, 
+                g.Fecha, 
+                g.Descripcion, 
+                g.Monto, 
+                c.Nombre AS Nombre_Categoria
+            FROM Gasto g
+            LEFT JOIN Categoria_Gasto c ON g.Id_Categoria = c.Id_Categoria
+            ORDER BY g.Fecha DESC, g.Id_Gasto DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo gastos:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// 3. Registrar un nuevo gasto
+app.post('/api/gastos', async (req, res) => {
+    try {
+        const { Fecha, Descripcion, Monto, Id_Categoria } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Fecha', sql.Date, Fecha)
+            .input('Descripcion', sql.VarChar, Descripcion)
+            .input('Monto', sql.Decimal(12, 2), Monto)
+            .input('Id_Categoria', sql.Int, Id_Categoria || null)
+            .query(`
+                INSERT INTO Gasto (Fecha, Descripcion, Monto, Id_Categoria)
+                VALUES (@Fecha, @Descripcion, @Monto, @Id_Categoria)
+            `);
+            
+        res.status(201).send("Gasto registrado correctamente");
+    } catch (error) {
+        console.error("Error al registrar gasto:", error);
+        res.status(500).send("Error interno al guardar el gasto");
+    }
+});
+
+// 4. Eliminar un gasto
+app.delete('/api/gastos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Gasto', sql.Int, id)
+            .query(`DELETE FROM Gasto WHERE Id_Gasto = @Id_Gasto`);
+            
+        res.status(200).send("Gasto eliminado correctamente");
+    } catch (error) {
+        console.error("Error al eliminar gasto:", error);
+        res.status(500).send("Error interno al eliminar el gasto");
+    }
+});
+
+// Agregar nueva categoría de gasto
+app.post('/api/categorias-gastos', async (req, res) => {
+    const { Nombre } = req.body;
+    
+    if (!Nombre) {
+        return res.status(400).send("El nombre es obligatorio");
+    }
+
+    try {
+        let pool = await sql.connect(dbConfig);
+        await pool.request().query(`
+            INSERT INTO Categoria_Gasto (Nombre) 
+            VALUES ('${Nombre}')
+        `);
+        res.status(201).json({ message: "¡Categoría creada exitosamente!" });
+    } catch (err) {
+        console.error("Error creando categoría:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// ELIMINAR UN GASTO
+app.delete('/api/gastos/:id', async (req, res) => {
+    const idGasto = req.params.id;
+
+    try {
+        let pool = await sql.connect(dbConfig);
+        
+        // Ejecutamos la consulta para borrar el registro por su ID
+        const result = await pool.request().query(`
+            DELETE FROM Gasto 
+            WHERE Id_Gasto = ${idGasto}
+        `);
+
+        if (result.rowsAffected[0] > 0) {
+            res.status(200).json({ message: "Gasto eliminado con éxito" });
+        } else {
+            res.status(404).send("Gasto no encontrado");
+        }
+
+    } catch (err) {
+        console.error("Error al eliminar el gasto:", err);
+        res.status(500).send("Error interno del servidor al intentar eliminar");
+    }
+});
+
+// ==========================================
+// MÓDULO DE EXTRAS
+// ==========================================
+app.get('/api/extras', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query("SELECT * FROM Extra ORDER BY Nombre");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo extras:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// ==========================================
+// MÓDULO DE COBROS E INGRESOS
+// ==========================================
+
+// Obtener todos los ingresos para la tabla (Mejorado para manuales)
+app.get('/api/ingresos', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query(`
+            SELECT 
+                i.Id_Ingreso, 
+                i.Fecha, 
+                i.Monto_Total, 
+                i.Medio_Pago,
+                i.Concepto, 
+                c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                s.Nombre AS Nombre_Servicio
+            FROM Ingreso i
+            -- Usamos LEFT JOIN para que traiga la plata aunque no tenga turno asignado
+            LEFT JOIN Turno t ON i.Id_Turno = t.Id_Turno
+            LEFT JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+            LEFT JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            ORDER BY i.Fecha DESC, i.Id_Ingreso DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo ingresos:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Registrar un nuevo ingreso manual (Sin turno)
+app.post('/api/ingresos/manual', async (req, res) => {
+    const { Concepto, Monto_Total, Medio_Pago } = req.body;
+    try {
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Concepto', sql.VarChar, Concepto)
+            .input('Monto_Total', sql.Decimal(10,2), Monto_Total)
+            .input('Medio_Pago', sql.VarChar, Medio_Pago)
+            .query(`
+                INSERT INTO Ingreso (Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado, Concepto)
+                VALUES (GETDATE(), @Monto_Total, @Medio_Pago, 0, @Concepto)
+            `);
+        res.status(201).json({ message: "Ingreso manual registrado" });
+    } catch (err) {
+        console.error("Error al registrar ingreso manual:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+app.post('/api/cobrar-turno', async (req, res) => {
+    const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        
+        // 1. EL PATOVICA: Revisamos el estado antes de cobrar
+        const chequeo = await pool.request().query(`
+            SELECT Estado FROM Turno WHERE Id_Turno = ${idTurno}
+        `);
+        
+        if (chequeo.recordset.length === 0) return res.status(404).send("Turno no encontrado");
+        if (chequeo.recordset[0].Estado === 'Pagado') {
+            return res.status(400).send("¡Ojo! Este turno ya fue cobrado.");
+        }
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        
+        try {
+            // 2. Guardar la plata en Ingreso
+            const requestIngreso = new sql.Request(transaction);
+            await requestIngreso.query(`
+                INSERT INTO Ingreso (Id_Turno, Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado)
+                VALUES (${idTurno}, GETDATE(), ${montoTotal}, '${medioPago}', ${descuento})
+            `);
+            
+            // 3. Guardar extras en Turno_Extra
+            if (extras && extras.length > 0) {
+                for (let idExtra of extras) {
+                    const requestExtra = new sql.Request(transaction);
+                    await requestExtra.query(`
+                        INSERT INTO Turno_Extra (Id_Turno, Id_Extra)
+                        VALUES (${idTurno}, ${idExtra})
+                    `);
+                }
+            }
+            
+            // 4. MAGIA: Cambiar el estado del turno a "Pagado"
+            const requestEstado = new sql.Request(transaction);
+            await requestEstado.query(`
+                UPDATE Turno SET Estado = 'Pagado' WHERE Id_Turno = ${idTurno}
+            `);
+            
+            await transaction.commit();
+            res.status(200).json({ message: "¡Cobro registrado exitosamente!" });
+            
+        } catch (err) {
+            await transaction.rollback();
+            throw err; 
+        }
+    } catch (err) {
+        console.error("Error al registrar el cobro:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Actualizar detalles del turno durante la sesión (Ej: Anotar color)
+// Agregar un color/detalle a la sesión
+app.put('/api/turnos/:id/detalles', async (req, res) => {
+    const { id } = req.params;
+    const { Color } = req.body; // Este es el color NUEVO que se agrega
+
+    try {
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Id_Turno', sql.Int, id)
+            .input('NuevoColor', sql.VarChar, Color)
+            .query(`
+                UPDATE Turno 
+                SET Color = CASE 
+                                WHEN Color IS NULL OR Color = '' THEN @NuevoColor 
+                                ELSE Color + ' | ' + @NuevoColor 
+                            END,
+                    Estado = CASE WHEN Estado = 'Pendiente' THEN 'En progreso' ELSE Estado END
+                WHERE Id_Turno = @Id_Turno AND Estado != 'Pagado'
+            `);
+            
+        res.status(200).send("Color agregado a la sesión.");
+    } catch (error) {
+        console.error("Error al guardar detalles:", error);
+        res.status(500).send("Error interno al actualizar el turno");
+    }
+});
 
 // ==========================================
 // 4. LEVANTAR EL SERVIDOR (Siempre al final)
