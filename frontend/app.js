@@ -1,3 +1,6 @@
+// Backend API — puerto 7777 (ver backend/.env)
+const API_BASE = 'http://localhost:7777/api';
+
 // ==========================================================================
 // 1. UTILIDADES GLOBALES Y NOTIFICACIONES
 // ==========================================================================
@@ -70,6 +73,7 @@ const seccionClientas = document.getElementById('seccionClientas');
 const seccionEmpleados = document.getElementById('seccionEmpleados');
 const seccionGastos = document.getElementById('seccionGastos');
 const seccionIngresos = document.getElementById('seccionIngresos'); 
+const seccionConfiguracion = document.getElementById('seccionConfiguracion');
 
 const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
@@ -91,6 +95,7 @@ botonesMenu.forEach(boton => {
         seccionGastos.style.display = 'none';
         // 2.1 Ocultamos la nueva sección
         if(seccionIngresos) seccionIngresos.style.display = 'none'; 
+        if(seccionConfiguracion) seccionConfiguracion.style.display = 'none';
 
         // 3. APAGAR TODOS LOS BOTONES SUPERIORES POR DEFECTO
         btnNuevoTurno.style.display = 'none';
@@ -131,6 +136,11 @@ botonesMenu.forEach(boton => {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
             cargarIngresos();
+
+        } else if (opcionSeleccionada === 'Configuración') {
+            if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
+            tituloHeader.textContent = 'Configuración del Sistema';
+            cargarSeccionConfiguracion();
         }
     });
 });
@@ -156,7 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
             slotMinTime: '09:30:00', 
             slotMaxTime: '21:30:00', 
             allDaySlot: false, 
-            events: 'http://localhost:3000/api/turnos',
+            events: 'http://localhost:7777/api/turnos',
             eventColor: 'var(--mostaza)'
         });
         calendar.render();
@@ -224,7 +234,7 @@ async function guardarTurno() {
             return; 
         }
         try {
-        const respuesta = await fetch('http://localhost:3000/api/turnos', {
+        const respuesta = await fetch('http://localhost:7777/api/turnos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoTurno)
@@ -278,7 +288,7 @@ async function guardarTurno() {
     };
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/turnos', {
+        const respuesta = await fetch('http://localhost:7777/api/turnos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoTurno)
@@ -321,7 +331,7 @@ function agendarTurnoRapido(idClienta) {
 // --- Cargar Servicios en el desplegable de Turnos ---
 async function cargarServicios() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/servicios');
+        const respuesta = await fetch('http://localhost:7777/api/servicios');
         const servicios = await respuesta.json();
         
         const selectServicio = document.getElementById('selectServicioTurno');
@@ -344,7 +354,7 @@ async function cargarServicios() {
 async function inicializarAgendaDiaria() {
     try {
         // 1. Buscamos a las profesionales en la base de datos
-        const respuesta = await fetch('http://localhost:3000/api/empleadas');
+        const respuesta = await fetch('http://localhost:7777/api/empleadas');
         const empleadas = await respuesta.json();
 
         // 2. Dibujamos el Encabezado (Los nombres arriba)
@@ -489,7 +499,7 @@ async function cargarTurnosAgenda() {
     if (!inputFecha || !inputFecha.value) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${inputFecha.value}`);
+        const respuesta = await fetch(`http://localhost:7777/api/turnos/fecha/${inputFecha.value}`);
         const turnos = await respuesta.json();
 
         // 1. Limpieza: Borramos las tarjetitas que ya estaban dibujadas
@@ -629,7 +639,7 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
 
     try {
         // 3. Vamos a buscar los datos al backend
-        const respuesta = await fetch(`http://localhost:3000/api/clientas/${idClienta}/historial`);
+        const respuesta = await fetch(`http://localhost:7777/api/clientas/${idClienta}/historial`);
         const historial = await respuesta.json();
 
         listaHistorial.innerHTML = ''; // Limpiamos el "Cargando..."
@@ -687,7 +697,7 @@ function cambiarVistaClientas(vista) {
 // --- Cargar Clientas (Genera tarjetas y filas simultáneamente) ---
 async function cargarClientas() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/clientas');
+        const respuesta = await fetch('http://localhost:7777/api/clientas');
         const clientas = await respuesta.json();
         
         // 1. Llenar select del modal de turnos
@@ -783,8 +793,8 @@ async function guardarClienta() {
     };
 
     const url = idOculto 
-        ? `http://localhost:3000/api/clientas/${idOculto}` 
-        : 'http://localhost:3000/api/clientas';
+        ? `http://localhost:7777/api/clientas/${idOculto}` 
+        : 'http://localhost:7777/api/clientas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -895,8 +905,8 @@ async function guardarEmpleada() {
     }
 
     const url = idOculto 
-        ? `http://localhost:3000/api/empleadas/${idOculto}` 
-        : 'http://localhost:3000/api/empleadas';
+        ? `http://localhost:7777/api/empleadas/${idOculto}` 
+        : 'http://localhost:7777/api/empleadas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -925,7 +935,7 @@ async function guardarEmpleada() {
 // --- Cargar Empleadas (Dibuja las tarjetas) ---
 async function cargarEmpleadas() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/empleadas');
+        const respuesta = await fetch('http://localhost:7777/api/empleadas');
         const empleadas = await respuesta.json();
         // ================================================================
         // NUEVO: Llenamos el desplegable de Profesionales en el modal de Turnos
@@ -1016,7 +1026,7 @@ function prepararNuevoGasto() {
 // Llenar el desplegable con las categorías de SQL
 async function cargarCategoriasGasto() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos');
         const categorias = await respuesta.json();
         
         const select = document.getElementById('selectCategoriaGasto');
@@ -1037,7 +1047,7 @@ let memoriaGastos = [];
 // Llenar el desplegable con las categorías (Actualizado para llenar también el filtro)
 async function cargarCategoriasGasto() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
+        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos');
         const categorias = await respuesta.json();
         
         const selectModal = document.getElementById('selectCategoriaGasto');
@@ -1059,7 +1069,7 @@ async function cargarCategoriasGasto() {
 // Traer los gastos de la base de datos
 async function cargarGastos() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/gastos');
+        const respuesta = await fetch('http://localhost:7777/api/gastos');
         memoriaGastos = await respuesta.json(); // Guardamos todo en memoria
         aplicarFiltrosGastos(); // Dibujamos pasando por el filtro
     } catch (error) {
@@ -1144,7 +1154,7 @@ async function guardarGasto() {
     };
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/gastos', {
+        const respuesta = await fetch('http://localhost:7777/api/gastos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoGasto)
@@ -1168,7 +1178,7 @@ async function eliminarGasto(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/gastos/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`http://localhost:7777/api/gastos/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Gasto eliminado con éxito.", "success");
             cargarGastos();
@@ -1187,7 +1197,7 @@ async function eliminarEmpleada(id) {
     if (!confirmacion) return; 
 
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
+        const respuesta = await fetch(`http://localhost:7777/api/empleadas/${id}`, {
             method: 'DELETE'
         });
 
@@ -1224,7 +1234,7 @@ async function guardarNuevaCategoria() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos', {
+        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Nombre: nombre })
@@ -1250,7 +1260,7 @@ async function guardarNuevaCategoria() {
 // ==========================================================================
 async function cargarIngresos() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/ingresos');
+        const respuesta = await fetch('http://localhost:7777/api/ingresos');
         const ingresos = await respuesta.json();
         
         const tbody = document.getElementById('tablaIngresosBody');
@@ -1432,7 +1442,7 @@ async function guardarDetallesTurno() {
     }
     
     try {
-        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
+        const respuesta = await fetch(`http://localhost:7777/api/turnos/${idTurno}/detalles`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Color: colorElegido })
@@ -1467,7 +1477,7 @@ if (modalDetalleTurno) {
 // Traer la lista de extras desde SQL y armar los checkboxes
 async function cargarExtrasDisponibles() {
     try {
-        const respuesta = await fetch('http://localhost:3000/api/extras');
+        const respuesta = await fetch('http://localhost:7777/api/extras');
         const extras = await respuesta.json();
 
         const contenedor = document.getElementById('contenedorExtras');
@@ -1561,7 +1571,7 @@ async function confirmarCobroTurno() {
 
     try {
         // Le tocamos la puerta al backend
-        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
+        const respuesta = await fetch('http://localhost:7777/api/cobrar-turno', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1608,7 +1618,7 @@ async function guardarIngresoManual() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:3000/api/ingresos/manual', {
+        const respuesta = await fetch('http://localhost:7777/api/ingresos/manual', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1630,3 +1640,455 @@ async function guardarIngresoManual() {
         mostrarNotificacion("Error de conexión.", "error");
     }
 }
+
+// ==========================================================================
+// MÓDULO DE CONFIGURACIÓN
+// ==========================================================================
+
+const CONFIG_STORAGE_KEY = 'emme_config_local';
+let configWaPollInterval = null;
+
+function detenerPollWhatsApp() {
+    if (configWaPollInterval) {
+        clearInterval(configWaPollInterval);
+        configWaPollInterval = null;
+    }
+}
+
+function iniciarPollWhatsApp() {
+    detenerPollWhatsApp();
+    configWaPollInterval = setInterval(() => {
+        actualizarEstadoWhatsApp();
+    }, 2500);
+}
+
+function actualizarUiQrWhatsApp(status) {
+    const qrContainer = document.getElementById('configQrContainer');
+    const qrEspera = document.getElementById('configQrEspera');
+    const qrConectado = document.getElementById('configQrConectado');
+    const qrEsperaTexto = document.getElementById('configQrEsperaTexto');
+
+    if (qrContainer) qrContainer.style.display = 'none';
+    if (qrConectado) qrConectado.style.display = 'none';
+    if (qrEspera) qrEspera.style.display = 'none';
+
+    if (status === 'ready') {
+        if (qrConectado) qrConectado.style.display = 'block';
+        detenerPollWhatsApp();
+        return;
+    }
+
+    if (status === 'disabled') {
+        if (qrEspera) {
+            qrEspera.style.display = 'flex';
+            if (qrEsperaTexto) qrEsperaTexto.textContent = 'WhatsApp deshabilitado en el servidor (WHATSAPP_ENABLED=false).';
+        }
+        detenerPollWhatsApp();
+        return;
+    }
+
+    if (status === 'qr') {
+        renderizarQrWhatsApp();
+        return;
+    }
+
+    if (status === 'connecting' || status === 'disconnected' || status === 'error') {
+        if (qrEspera) {
+            qrEspera.style.display = 'flex';
+            const textos = {
+                connecting: 'Conectando con WhatsApp...',
+                disconnected: 'Desconectado. Tocá «Reiniciar conexión» para generar un QR.',
+                error: 'Error de conexión. Probá «Borrar sesión y reconectar».'
+            };
+            if (qrEsperaTexto) qrEsperaTexto.textContent = textos[status] || 'Verificando estado...';
+        }
+    }
+}
+
+async function renderizarQrWhatsApp() {
+    const qrContainer = document.getElementById('configQrContainer');
+    const qrEspera = document.getElementById('configQrEspera');
+    const qrEsperaTexto = document.getElementById('configQrEsperaTexto');
+    const qrImage = document.getElementById('configQrImage');
+
+    if (!qrContainer) return;
+
+    try {
+        const respuesta = await fetch(`${API_BASE}/whatsapp/qr`);
+        const data = respuesta.ok ? await respuesta.json() : null;
+
+        if (data?.qr_image && qrImage) {
+            if (qrEspera) qrEspera.style.display = 'none';
+            qrContainer.style.display = 'block';
+            qrImage.src = data.qr_image;
+            qrImage.style.display = 'block';
+            return;
+        }
+
+        if (data?.status === 'qr') {
+            if (qrEspera) {
+                qrEspera.style.display = 'flex';
+                if (qrEsperaTexto) qrEsperaTexto.textContent = 'Generando código QR...';
+            }
+            qrContainer.style.display = 'none';
+            return;
+        }
+
+        qrContainer.style.display = 'none';
+    } catch (error) {
+        console.error('Error renderizando QR:', error);
+        if (qrEspera) {
+            qrEspera.style.display = 'flex';
+            if (qrEsperaTexto) qrEsperaTexto.textContent = 'Error al cargar el QR. Tocá «Actualizar estado».';
+        }
+    }
+}
+
+function getConfigLocal() {
+    try {
+        return JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY)) || {};
+    } catch {
+        return {};
+    }
+}
+
+function setConfigLocal(data) {
+    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({ ...getConfigLocal(), ...data }));
+}
+
+function cambiarTabConfig(tab) {
+    document.querySelectorAll('.config-tabs .btn-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.configTab === tab);
+    });
+
+    const paneles = {
+        general: 'configPanelGeneral',
+        whatsapp: 'configPanelWhatsapp',
+        servicios: 'configPanelServicios',
+        agenda: 'configPanelAgenda'
+    };
+
+    Object.entries(paneles).forEach(([id, panelId]) => {
+        const panel = document.getElementById(panelId);
+        if (panel) panel.classList.toggle('config-panel-active', id === tab);
+    });
+
+    if (tab === 'whatsapp') {
+        actualizarEstadoWhatsApp();
+        iniciarPollWhatsApp();
+    } else {
+        detenerPollWhatsApp();
+    }
+    if (tab === 'servicios') cargarCatalogoConfig();
+}
+
+function formatearEstadoWhatsApp(status) {
+    const mapa = {
+        ready: { texto: '● Conectado', clase: 'config-badge--ok' },
+        connecting: { texto: '● Conectando...', clase: 'config-badge--pending' },
+        qr: { texto: '● Esperando QR', clase: 'config-badge--pending' },
+        disconnected: { texto: '● Desconectado', clase: 'config-badge--error' },
+        error: { texto: '● Error', clase: 'config-badge--error' },
+        disabled: { texto: '● Deshabilitado', clase: 'config-badge--off' }
+    };
+    return mapa[status] || { texto: '● ' + status, clase: 'config-badge--off' };
+}
+
+function actualizarBadgeWhatsApp(status) {
+    const badge = document.getElementById('configWaBadge');
+    if (!badge) return;
+    const { texto, clase } = formatearEstadoWhatsApp(status);
+    badge.textContent = texto;
+    badge.className = 'config-badge ' + clase;
+}
+
+function armarPreviewRecordatorio(nombreLocal, direccion) {
+    const ahora = new Date();
+    ahora.setDate(ahora.getDate() + 1);
+    ahora.setHours(10, 30, 0, 0);
+
+    const fecha = ahora.toLocaleDateString('es-AR', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+    const hora = ahora.toLocaleTimeString('es-AR', {
+        hour: '2-digit', minute: '2-digit', hour12: false
+    });
+
+    return (
+        `Hola Ana! 💅\n\n` +
+        `Te recordamos tu turno en *${nombreLocal || 'EMME Beauty'}*:\n\n` +
+        `💅 Manicura Semipermanente\n` +
+        `👤 Con Mili\n` +
+        `📅 ${fecha} a las ${hora}\n` +
+        `📍 ${direccion || '—'}\n\n` +
+        `¡Te esperamos!\n` +
+        `— ${nombreLocal || 'EMME Beauty'}`
+    );
+}
+
+async function actualizarEstadoWhatsApp() {
+    const perfilEl = document.getElementById('configWaPerfil');
+    const numeroEl = document.getElementById('configWaNumero');
+    const dbEl = document.getElementById('configDbEstado');
+    const previewEl = document.getElementById('configPreviewMensaje');
+
+    try {
+        const [healthRes, waRes] = await Promise.all([
+            fetch(`${API_BASE.replace('/api', '')}/api/health`),
+            fetch(`${API_BASE}/whatsapp/info`)
+        ]);
+
+        const health = healthRes.ok ? await healthRes.json() : null;
+        const waInfo = waRes.ok ? await waRes.json() : null;
+
+        const status = waInfo?.status || health?.whatsapp || 'disconnected';
+        actualizarBadgeWhatsApp(status);
+        actualizarUiQrWhatsApp(status);
+
+        if (perfilEl) {
+            perfilEl.textContent = waInfo?.cuenta?.nombre_perfil || health?.emme?.nombre_perfil || '—';
+        }
+        if (numeroEl) {
+            numeroEl.textContent = waInfo?.cuenta?.numero || health?.emme?.numero || '—';
+        }
+        if (dbEl) {
+            dbEl.textContent = health?.database === 'connected' ? 'Conectada' : 'Modo demo';
+        }
+
+        const nombreLocal = document.getElementById('configNombreLocal')?.value
+            || waInfo?.negocio
+            || health?.emme?.negocio_configurado
+            || 'EMME Beauty';
+        const direccion = waInfo?.direccion
+            || health?.emme?.direccion
+            || document.getElementById('configDireccion')?.value
+            || '';
+
+        const direccionInput = document.getElementById('configDireccion');
+        if (direccionInput && (waInfo?.direccion || health?.emme?.direccion)) {
+            direccionInput.value = waInfo?.direccion || health.emme.direccion;
+        }
+
+        if (previewEl) {
+            previewEl.textContent = armarPreviewRecordatorio(nombreLocal, direccion);
+        }
+
+        if (status === 'qr') {
+            await renderizarQrWhatsApp();
+        }
+    } catch (error) {
+        console.error('Error obteniendo estado WhatsApp:', error);
+        actualizarBadgeWhatsApp('error');
+        actualizarUiQrWhatsApp('error');
+        if (previewEl) previewEl.textContent = 'No se pudo conectar con el servidor.';
+    }
+}
+
+async function reiniciarWhatsApp(limpiarSesion) {
+    const mensajeConfirmacion = limpiarSesion
+        ? '¿Borrar la sesión de WhatsApp y generar un código QR nuevo? Vas a tener que escanearlo de nuevo.'
+        : '¿Reiniciar la conexión de WhatsApp?';
+
+    const confirmado = await pedirConfirmacion(mensajeConfirmacion);
+    if (!confirmado) return;
+
+    try {
+        const respuesta = await fetch(`${API_BASE}/whatsapp/reiniciar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limpiar_sesion: limpiarSesion })
+        });
+
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarNotificacion(data.mensaje || 'Reinicio iniciado.', 'warning');
+            iniciarPollWhatsApp();
+            setTimeout(() => actualizarEstadoWhatsApp(), 1500);
+        } else {
+            mostrarNotificacion(data.error || 'No se pudo reiniciar WhatsApp.', 'error');
+        }
+    } catch (error) {
+        console.error('Error reiniciando WhatsApp:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+    }
+}
+
+async function cargarDatosGeneralesConfig() {
+    const local = getConfigLocal();
+
+    document.getElementById('configTelefono').value = local.telefono || '';
+    document.getElementById('configInstagram').value = local.instagram || '';
+    document.getElementById('configDescripcion').value = local.descripcion || '';
+    document.getElementById('configHorasRecordatorio').value = local.horasRecordatorio || 24;
+
+    let nombreLocal = '';
+    let direccion = '';
+
+    try {
+        const respuesta = await fetch(`${API_BASE}/whatsapp/info`);
+        if (respuesta.ok) {
+            const data = await respuesta.json();
+            if (data.negocio) nombreLocal = data.negocio;
+            if (data.direccion) direccion = data.direccion;
+        }
+    } catch { /* silencioso */ }
+
+    try {
+        const respuesta = await fetch(`${API_BASE.replace('/api', '')}/api/health`);
+        if (respuesta.ok) {
+            const health = await respuesta.json();
+            if (health.emme?.negocio_configurado) nombreLocal = health.emme.negocio_configurado;
+            if (health.emme?.direccion) direccion = health.emme.direccion;
+        }
+    } catch { /* silencioso */ }
+
+    document.getElementById('configNombreLocal').value = nombreLocal;
+
+    const direccionInput = document.getElementById('configDireccion');
+    direccionInput.value = direccion;
+
+    const previewEl = document.getElementById('configPreviewMensaje');
+    if (previewEl) {
+        previewEl.textContent = armarPreviewRecordatorio(nombreLocal, direccion);
+    }
+}
+
+function cargarDatosAgendaConfig() {
+    const local = getConfigLocal();
+    const agenda = local.agenda || {};
+
+    document.getElementById('configApertura').value = agenda.apertura || '09:30';
+    document.getElementById('configCierre').value = agenda.cierre || '21:30';
+    document.getElementById('configBloque').value = agenda.bloque || '30';
+
+    const diasActivos = new Set(agenda.dias || [1, 2, 3, 4, 5, 6]);
+    document.querySelectorAll('.config-dia').forEach((btn) => {
+        const dia = parseInt(btn.dataset.dia, 10);
+        btn.classList.toggle('active', diasActivos.has(dia));
+    });
+}
+
+async function cargarCatalogoConfig() {
+    const tbodyServicios = document.getElementById('configTablaServicios');
+    const tbodyExtras = document.getElementById('configTablaExtras');
+
+    try {
+        const [serviciosRes, extrasRes] = await Promise.all([
+            fetch(`${API_BASE}/servicios`),
+            fetch(`${API_BASE}/extras`)
+        ]);
+
+        const servicios = serviciosRes.ok ? await serviciosRes.json() : [];
+        const extras = extrasRes.ok ? await extrasRes.json() : [];
+
+        if (tbodyServicios) {
+            if (servicios.length === 0) {
+                tbodyServicios.innerHTML = '<tr><td class="config-table-empty">No hay servicios registrados.</td></tr>';
+            } else {
+                tbodyServicios.innerHTML = servicios.map((s) =>
+                    `<tr><td>${s.Nombre}</td></tr>`
+                ).join('');
+            }
+        }
+
+        if (tbodyExtras) {
+            if (extras.length === 0) {
+                tbodyExtras.innerHTML = '<tr><td colspan="2" class="config-table-empty">No hay extras registrados.</td></tr>';
+            } else {
+                tbodyExtras.innerHTML = extras.map((e) =>
+                    `<tr>
+                        <td>${e.Nombre}</td>
+                        <td style="text-align: right; font-weight: 500; color: var(--mostaza);">$${Number(e.Precio).toLocaleString('es-AR')}</td>
+                    </tr>`
+                ).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error cargando catálogo:', error);
+        if (tbodyServicios) {
+            tbodyServicios.innerHTML = '<tr><td class="config-table-empty">Error al cargar servicios.</td></tr>';
+        }
+        if (tbodyExtras) {
+            tbodyExtras.innerHTML = '<tr><td colspan="2" class="config-table-empty">Error al cargar extras.</td></tr>';
+        }
+    }
+}
+
+function guardarConfigGeneral() {
+    setConfigLocal({
+        telefono: document.getElementById('configTelefono').value.trim(),
+        instagram: document.getElementById('configInstagram').value.trim(),
+        descripcion: document.getElementById('configDescripcion').value.trim(),
+        horasRecordatorio: parseInt(document.getElementById('configHorasRecordatorio').value, 10) || 24
+    });
+
+    mostrarNotificacion('Configuración general guardada.', 'success');
+}
+
+function guardarConfigAgenda() {
+    const dias = [];
+    document.querySelectorAll('.config-dia.active').forEach((btn) => {
+        dias.push(parseInt(btn.dataset.dia, 10));
+    });
+
+    setConfigLocal({
+        agenda: {
+            apertura: document.getElementById('configApertura').value,
+            cierre: document.getElementById('configCierre').value,
+            bloque: document.getElementById('configBloque').value,
+            dias
+        }
+    });
+
+    mostrarNotificacion('Preferencias de agenda guardadas.', 'success');
+}
+
+async function enviarMensajePruebaWhatsApp() {
+    const telefono = document.getElementById('configPruebaTelefono').value.trim();
+    const nombre = document.getElementById('configPruebaNombre').value.trim() || 'Prueba';
+
+    if (!telefono) {
+        mostrarNotificacion('Ingresá un teléfono para la prueba.', 'warning');
+        return;
+    }
+
+    try {
+        const respuesta = await fetch(`${API_BASE}/whatsapp/probar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telefono, nombre })
+        });
+
+        const data = await respuesta.json();
+
+        if (respuesta.ok) {
+            mostrarNotificacion('Mensaje de prueba enviado correctamente.', 'success');
+        } else {
+            mostrarNotificacion(data.error || 'No se pudo enviar el mensaje.', 'error');
+        }
+    } catch (error) {
+        console.error('Error enviando prueba WhatsApp:', error);
+        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+    }
+}
+
+function cargarSeccionConfiguracion() {
+    cargarDatosGeneralesConfig();
+    cargarDatosAgendaConfig();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.config-dia').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            btn.classList.toggle('active');
+        });
+    });
+
+    const horasInput = document.getElementById('configHorasRecordatorio');
+    if (horasInput) {
+        horasInput.addEventListener('change', () => {
+            setConfigLocal({ horasRecordatorio: parseInt(horasInput.value, 10) || 24 });
+        });
+    }
+});
