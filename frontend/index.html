@@ -6,14 +6,23 @@
     <title>EMME Beauty - Gestión</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    
     <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
+    <!-- =========================================================================
+         ÍNDICE DEL DOCUMENTO HTML
+         1. BARRA LATERAL (Sidebar)
+         2. CABECERA PRINCIPAL (Header)
+         3. SECCIONES CENTRALES (Turnos, Clientas, Empleados, Gastos, Ingresos)
+         4. VENTANAS MODALES
+         5. COMPONENTES GLOBALES (Toasts, Scripts)
+         ========================================================================= -->
 
+    <!-- =========================================================================
+         1. BARRA LATERAL (Sidebar)
+         ========================================================================= -->
     <aside class="sidebar">
         <div class="logo-text">EMME</div>
         <div class="menu-item active">Turnos</div>
@@ -25,29 +34,29 @@
     </aside>
 
     <main class="main-content">
+        <!-- =========================================================================
+             2. CABECERA PRINCIPAL (Header)
+             ========================================================================= -->
         <div class="header">
             <h1>Gestión de Turnos</h1>
             <div class="header-actions">
                 <input type="text" id="buscadorClientas" placeholder="Buscar clienta..." style="display: none;">
-                
                 <button class="btn-primary" id="btnNuevaClienta" onclick="prepararNuevaClienta()" style="display: none;">+ Nueva Clienta</button>
-                
                 <button class="btn-primary" id="btnNuevoTurno" onclick="abrirModalTurno()">+ Nuevo Turno</button>
-
                 <button class="btn-primary" id="btnNuevaEmpleada" onclick="prepararNuevaEmpleada()" style="display: none;">+ Nueva Empleada</button>
-
                 <button class="btn-primary" id="btnNuevoGasto" onclick="prepararNuevoGasto()" style="display: none;">+ Nuevo Gasto</button>
             </div>
         </div>
 
-        <!-- SECCIÓN TURNOS -->
+        <!-- =========================================================================
+             3. SECCIONES CENTRALES
+             ========================================================================= -->
+        
+        <!-- 3.1. SECCIÓN: TURNOS -->
         <div id="seccionTurnos" class="seccion-activa">
-            
-            <!-- Cabecera Principal y Toggle -->
             <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                 <div>
                     <h2>Vistas de la Agenda</h2>
-                    <!-- Botonera para cambiar de vista -->
                     <div style="margin-top: 15px; display: flex; gap: 10px;">
                         <button id="btnVistaDiaria" class="btn-tab active" onclick="cambiarVistaAgenda('diaria')">Agenda Diaria</button>
                         <button id="btnVistaSemanal" class="btn-tab" onclick="cambiarVistaAgenda('semanal')">Agenda Semanal</button>
@@ -57,21 +66,17 @@
 
             <!-- VISTA 1: AGENDA DIARIA -->
             <div id="vistaDiaria" style="display: block;">
-                <!-- Controles de Fecha (solo para la diaria) -->
                 <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: white; padding: 10px 15px; border-radius: 8px; width: fit-content; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
                     <button class="btn-icon" id="btnDiaAnterior">◀</button>
                     <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
                     <button class="btn-icon" id="btnDiaSiguiente">▶</button>
                 </div>
 
-                <!-- Grilla del Calendario -->
                 <div class="agenda-container">
                     <div class="agenda-header" id="agendaHeader">
                         <div class="hora-col">Hora</div>
-                        <!-- JavaScript inyectará a las profesionales acá -->
                     </div>
                     <div class="agenda-body" id="agendaBody">
-                        <!-- JavaScript inyectará las horas acá -->
                     </div>
                 </div>
             </div>
@@ -83,26 +88,19 @@
                     <p>Acá va a ir tu calendario de Lunes a Sábado.</p>
                 </div>
             </div>
-            
-        </div> <!-- Cierre de seccionTurnos -->
+        </div>
 
-        <!-- ========================================================================= -->
-        <!-- SECCIÓN CLIENTAS (MODIFICADA CON BOTONES, TARJETAS Y LISTA)               -->
-        <!-- ========================================================================= -->
+        <!-- 3.2. SECCIÓN: CLIENTAS -->
         <div id="seccionClientas" style="display: none;">
-            
-            <!-- Botones para cambiar la vista -->
             <div style="margin-bottom: 20px; display: flex; gap: 10px;">
                 <button id="btnVistaTarjetas" class="btn-tab active" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
                 <button id="btnVistaLista" class="btn-tab" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
             </div>
 
-            <!-- 1. CONTENEDOR DE TARJETAS (Visible por defecto) -->
-            <div id="vistaClientasTarjetas" class="cards-grid">
-                <!-- El JavaScript inyecta las tarjetas acá -->
-            </div>
+            <!-- VISTA TARJETAS -->
+            <div id="vistaClientasTarjetas" class="cards-grid"></div>
 
-            <!-- 2. CONTENEDOR DE LISTA (Oculto por defecto) -->
+            <!-- VISTA LISTA -->
             <div id="vistaClientasListado" style="display: none; overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <thead style="background-color: #2c3e50; color: white;">
@@ -114,42 +112,29 @@
                             <th style="padding: 12px 15px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaClientasBody">
-                        <!-- El JavaScript inyecta las filas acá -->
-                    </tbody>
+                    <tbody id="tablaClientasBody"></tbody>
                 </table>
             </div>
-
         </div>
-        <!-- ========================================================================= -->
-        <!-- FIN SECCIÓN CLIENTAS                                                      -->
-        <!-- ========================================================================= -->
 
-
+        <!-- 3.3. SECCIÓN: EMPLEADOS -->
         <div id="seccionEmpleados" style="display: none;">
-            <div class="cards-grid" id="contenedorEmpleadas">
-                <!-- Se llena automáticamente con JavaScript -->
-            </div>
+            <div class="cards-grid" id="contenedorEmpleadas"></div>
         </div>
 
-        <!-- SECCIÓN GASTOS -->
+        <!-- 3.4. SECCIÓN: GASTOS -->
         <div id="seccionGastos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px;">Gestione los gastos diarios del local.</p>
                     
-                    <!-- BARRA DE FILTROS -->
                     <div style="display: flex; gap: 15px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee;">
                         <span style="font-size: 13px; color: #555; font-weight: bold;">Filtros:</span>
-
-                        <!-- Anio -->
-                         <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: white;">
+                        <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: white;">
                             <option value="todos">Todos los años</option>
-                            <option value="2026" selected>2026</option> <!-- Por defecto el año actual -->
+                            <option value="2026" selected>2026</option>
                             <option value="2025">2025</option>
                         </select>
-
-                        <!-- Mes --> 
                         <select id="filtroMesGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
                             <option value="todos">Todos los meses</option>
                             <option value="0">Enero</option>
@@ -165,11 +150,8 @@
                             <option value="10">Noviembre</option>
                             <option value="11">Diciembre</option>
                         </select>
-
-                        <!-- Categoria-->
                         <select id="filtroCategoriaGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
                             <option value="todas">Todas las categorías</option>
-                            <!-- Se llenará con JS -->
                         </select>
                     </div>
                 </div>
@@ -186,16 +168,14 @@
                     </thead>
                     <tbody id="tablaGastosBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">
-                                Cargando gastos...
-                            </td>
+                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando gastos...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
         
-        <!-- SECCIÓN INGRESOS -->
+        <!-- 3.5. SECCIÓN: INGRESOS -->
         <div id="seccionIngresos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -222,13 +202,9 @@
                     </thead>
                     <tbody id="tablaIngresosBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">
-                                Cargando ingresos...
-                            </td>
+                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando ingresos...</td>
                         </tr>
                     </tbody>
-
-                    <!-- Pie de tabla para el totalizador -->
                     <tfoot style="background-color: #f8f9fa; border-top: 2px solid #ddd;">
                         <tr>
                             <td colspan="4" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 15px; color: #333;">Total en pantalla:</td>
@@ -240,15 +216,17 @@
         </div>
     </main>
 
+    <!-- =========================================================================
+         4. VENTANAS MODALES
+         ========================================================================= -->
+
     <!-- Modal Nueva Clienta -->
     <div class="modal-overlay" id="modalNuevaClienta">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="tituloModalClienta">Registre un nuevo Cliente</h2>
             </div>
-
             <input type="hidden" id="idClientaOculto">
-            
             <div class="form-row">
                 <div class="form-group">
                     <label>Nombre</label>
@@ -259,12 +237,10 @@
                     <input type="text" id="apellidoInput" placeholder="Ej. Navarro">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Cumpleaños</label>
                 <input type="date" id="cumpleInput">
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Teléfono</label>
@@ -275,10 +251,25 @@
                     <input type="text" id="igInput" placeholder="@usuario">
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
                 <button class="btn-primary" id="btnGuardarClienta" onclick="guardarClienta()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial Estético Clienta -->
+    <div class="modal-overlay" id="modalPerfilClienta">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="nombrePerfilClienta">Perfil de la Clienta</h2>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; color: var(--mostaza); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Historial de Servicios</h3>
+                <div id="listaHistorialClienta" style="max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn-secondary" onclick="cerrarModalPerfil()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -290,13 +281,10 @@
                 <h2>Agendar Nuevo Turno</h2>
             </div>
             
-            <!-- INICIO ZONA CLIENTA -->
             <div class="form-group" id="grupoSeleccionClienta">
                 <label for="selectClientaTurno">Clienta</label>
                 <div style="display: flex; gap: 10px;">
-                    <select id="selectClientaTurno" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <!-- Se llena con JS -->
-                    </select>
+                    <select id="selectClientaTurno" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
                     <button type="button" id="btnNuevaClientaExpress" class="btn-secundario">+ Nueva</button>
                 </div>
             </div>
@@ -304,23 +292,18 @@
             <div class="form-group" id="grupoClientaExpress" style="display: none; background-color: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #eee;">
                 <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Registrar Nueva Clienta</label>
                 <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                    <input type="text" id="nombreExpress" placeholder="Nombre" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; pointer-events: auto; position: relative; z-index: 10;">
-                    <input type="text" id="apellidoExpress" placeholder="Apellido" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; pointer-events: auto; position: relative; z-index: 10;">
+                    <input type="text" id="nombreExpress" placeholder="Nombre" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="text" id="apellidoExpress" placeholder="Apellido" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="text-align: right;">
-                    <button type="button" id="btnCancelarExpress" style="font-size: 12px; color: #888; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;">
-                        Cancelar y elegir existente
-                    </button>
+                    <button type="button" id="btnCancelarExpress" style="font-size: 12px; color: #888; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;">Cancelar y elegir existente</button>
                 </div>
             </div>
-            <!-- FIN ZONA CLIENTA -->
 
-           <!-- Nueva disposición: Renglones separados para Servicio y Profesional -->
             <div class="form-group" style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px;">Servicio:</label>
                 <select id="servicioTurno" onchange="filtrarProfesionalesPorServicio()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
                     <option value="">Seleccione un servicio...</option>
-                    <!-- Las opciones se cargan dinámicamente -->
                 </select>
             </div>
             
@@ -328,7 +311,6 @@
                 <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px;">Profesional:</label>
                 <select id="empleadaTurno" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa;" disabled>
                     <option value="">Elija un servicio primero...</option>
-                    <!-- Acá aparecerán las chicas filtradas -->
                 </select>
             </div>
 
@@ -350,52 +332,6 @@
         </div>
     </div>
 
-    <!-- Modal Nueva Empleada -->
-    <div class="modal-overlay" id="modalNuevaEmpleada">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="tituloModalEmpleada">Registrar Nueva Profesional</h2>
-            </div>
-            
-            <input type="hidden" id="idEmpleadaOculto">
-            
-            <div class="form-group">
-                <label>Nombre y Apellido</label>
-                <input type="text" id="nombreEmpleadaInput" placeholder="Ej. Martina Gómez">
-            </div>
-
-            <div class="form-group">
-                <label>DNI</label>
-                <input type="text" id="dniEmpleadaInput" placeholder="Sin puntos, ej. 40123456">
-            </div>
-
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="cerrarModalEmpleada()">Cancelar</button>
-                <button class="btn-primary" id="btnGuardarEmpleada" onclick="guardarEmpleada()">Registrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Historial Clienta-->
-    <div class="modal-overlay" id="modalPerfilClienta">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="nombrePerfilClienta">Perfil de la Clienta</h2>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-size: 16px; color: var(--mostaza); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Historial de Servicios</h3>
-                
-                <div id="listaHistorialClienta" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center;">
-                <button class="btn-secondary" onclick="cerrarModalPerfil()">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Modal Detalle y Cobro de Turno -->
     <div class="modal-overlay" id="modalDetalleTurno">
         <div class="modal-content" style="max-width: 500px;">
@@ -405,14 +341,12 @@
             
             <input type="hidden" id="idTurnoCobroOculto">
             
-            <!-- Resumen del Servicio Base -->
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
                 <h3 id="nombreClientaCobro" style="margin: 0 0 5px 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
                 <p id="servicioBaseCobro" style="margin: 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
                 <p id="precioBaseCobro" style="margin: 5px 0 0 0; font-weight: bold; color: var(--mostaza);">Precio Base: $0</p>
             </div>
 
-            <!-- Selección de Extras -->
             <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                     <span style="font-size: 14px; font-weight: bold;">Estado del turno:</span>
@@ -423,21 +357,16 @@
                     <input type="text" id="colorTurnoInput" placeholder="Ej. Vía Láctea, Francesitas..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     <button id="btnGuardarDetalles" onclick="guardarDetallesTurno()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Guardar Info</button>
                 </div>
-                <!-- Contenedor donde van a aparecer los colores como etiquetas -->
-                <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <!-- Acá el JS va a inyectar los colores -->
-                </div>
+                <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
             </div>
 
-            <!-- Selección de Extras -->
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 15px;">
                 <label style="margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px;">Adicionales y Extras</label>
                 <div id="contenedorExtras" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
                     <p style="font-size: 13px; color: #888; margin: 0;">Cargando extras...</p>
                 </div>
             </div>
 
-            <!-- Zona de Pagos y Descuentos -->
             <div class="form-row" style="margin-top: 20px;">
                 <div class="form-group">
                     <label>Medio de Pago</label>
@@ -452,7 +381,6 @@
                 </div>
             </div>
 
-            <!-- Total Final Dinámico -->
             <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #eee;">
                 <span style="font-size: 14px; color: #666;">Seña abonada: -$8.000</span><br>
                 <span style="font-size: 18px; color: #333; font-weight: bold;">TOTAL A COBRAR: </span>
@@ -466,20 +394,39 @@
         </div>
     </div>
 
+    <!-- Modal Nueva Empleada -->
+    <div class="modal-overlay" id="modalNuevaEmpleada">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="tituloModalEmpleada">Registrar Nueva Profesional</h2>
+            </div>
+            <input type="hidden" id="idEmpleadaOculto">
+            <div class="form-group">
+                <label>Nombre y Apellido</label>
+                <input type="text" id="nombreEmpleadaInput" placeholder="Ej. Martina Gómez">
+            </div>
+            <div class="form-group">
+                <label>DNI</label>
+                <input type="text" id="dniEmpleadaInput" placeholder="Sin puntos, ej. 40123456">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModalEmpleada()">Cancelar</button>
+                <button class="btn-primary" id="btnGuardarEmpleada" onclick="guardarEmpleada()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Nuevo Gasto -->
     <div class="modal-overlay" id="modalNuevoGasto">
         <div class="modal-content" style="max-width: 500px;">
             <div class="modal-header">
                 <h2 id="tituloModalGasto">Registrar Nuevo Gasto</h2>
             </div>
-            
             <input type="hidden" id="idGastoOculto">
-            
             <div class="form-group">
                 <label>Descripción (*)</label>
                 <textarea id="descGastoInput" rows="2" placeholder="Ej. Compra de esmaltes, limas y algodón" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Fecha (*)</label>
@@ -490,7 +437,6 @@
                     <input type="number" id="montoGastoInput" placeholder="Ej. 15000">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Tipo (Categoría)</label>
                 <div style="display: flex; gap: 10px;">
@@ -498,7 +444,6 @@
                     <button type="button" class="btn-icon" onclick="abrirModalNuevaCategoria()" style="background: var(--mostaza); color: white; padding: 0 15px; border-radius: 4px; font-weight: bold;">+</button>
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalGasto()">Cancelar</button>
                 <button class="btn-primary" id="btnGuardarGasto" onclick="guardarGasto()">Guardar</button>
@@ -523,7 +468,7 @@
         </div>
     </div>
     
-    <!-- MODAL DE CONFIRMACIÓN GENÉRICO -->
+    <!-- Modal de Confirmación Genérico (Alertas) -->
     <div class="modal-overlay" id="modalConfirmacion">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
@@ -537,9 +482,11 @@
         </div>
     </div>
 
-    <!-- Contenedor para notificaciones (Toasts) -->
+    <!-- =========================================================================
+         5. COMPONENTES GLOBALES (Toasts, Scripts)
+         ========================================================================= -->
     <div id="toastContainer" class="toast-container"></div>
-
     <script src="app.js"></script>
+
 </body>
 </html>

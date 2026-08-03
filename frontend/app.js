@@ -1,4 +1,17 @@
 // ==========================================================================
+// ÍNDICE DEL DOCUMENTO
+// 1. UTILIDADES GLOBALES Y NOTIFICACIONES
+// 2. NAVEGACIÓN Y MENÚ LATERAL
+// 3. MÓDULO DE TURNOS Y CALENDARIO
+// 4. MÓDULO DE CLIENTAS (Incluye Perfil e Historial)
+// 5. MÓDULO DE EMPLEADAS
+// 6. MÓDULO DE GASTOS
+// 7. MÓDULO DE INGRESOS
+// 8. MÓDULO DE COBRO Y EXTRAS
+// ==========================================================================
+
+
+// ==========================================================================
 // 1. UTILIDADES GLOBALES Y NOTIFICACIONES
 // ==========================================================================
 
@@ -26,13 +39,13 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarClientas();
     cargarEmpleadas();
     cargarServicios();
-    cargarCategoriasGasto()
-    cargarExtrasDisponibles()
+    cargarCategoriasGasto();
+    cargarExtrasDisponibles();
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
 });
 
-// --- Sistema de Confirmación Personalizado (Promesa) ---
+// Sistema de Confirmación Personalizado (Promesa)
 function pedirConfirmacion(mensaje) {
     return new Promise((resolve) => {
         const modalConf = document.getElementById('modalConfirmacion');
@@ -40,25 +53,21 @@ function pedirConfirmacion(mensaje) {
         const btnAceptar = document.getElementById('btnAceptarConfirmacion');
         const btnCancelar = document.getElementById('btnCancelarConfirmacion');
 
-        // Ponemos el texto que queramos mostrar
         textoConf.textContent = mensaje;
-        
-        // Mostramos el modal
         modalConf.classList.add('active');
 
-        // Si toca aceptar, cerramos el modal y devolvemos "true"
         btnAceptar.onclick = () => {
             modalConf.classList.remove('active');
             resolve(true);
         };
 
-        // Si toca cancelar, cerramos y devolvemos "false"
         btnCancelar.onclick = () => {
             modalConf.classList.remove('active');
             resolve(false);
         };
     });
 }
+
 
 // ==========================================================================
 // 2. NAVEGACIÓN Y MENÚ LATERAL
@@ -80,26 +89,21 @@ const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
-        // 1. Cambiar la pestaña activa en el menú lateral
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
-        // 2. Ocultar TODAS las secciones centrales
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
         seccionGastos.style.display = 'none';
-        // 2.1 Ocultamos la nueva sección
         if(seccionIngresos) seccionIngresos.style.display = 'none'; 
 
-        // 3. APAGAR TODOS LOS BOTONES SUPERIORES POR DEFECTO
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
         btnNuevaEmpleada.style.display = 'none';
         btnNuevoGasto.style.display = 'none';
         buscadorClientas.style.display = 'none';
 
-        // 4. Prender solo lo que corresponde según la pestaña
         const opcionSeleccionada = boton.textContent.trim();
 
         if (opcionSeleccionada === 'Turnos') {
@@ -126,7 +130,6 @@ botonesMenu.forEach(boton => {
             btnNuevoGasto.style.display = 'block'; 
             cargarGastos(); 
             
-        // 4.1 Agregamos la lógica para la pestaña de Ingresos
         } else if (opcionSeleccionada === 'Ingresos') {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
@@ -135,11 +138,11 @@ botonesMenu.forEach(boton => {
     });
 });
 
+
 // ==========================================================================
 // 3. MÓDULO DE TURNOS Y CALENDARIO
 // ==========================================================================
 
-// --- Calendario (FullCalendar) ---
 document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendario');
     
@@ -163,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- Modal de Turnos ---
 const modalTurno = document.getElementById('modalNuevoTurno');
 
 function abrirModalTurno() {
@@ -180,14 +182,12 @@ if (modalTurno) {
     });
 }
 
-// --- Bloquear días pasados en el calendario de turnos ---
 const inputFechaTurno = document.getElementById('fechaTurnoInput');
 if (inputFechaTurno) {
     const hoy = new Date().toISOString().split('T')[0];
     inputFechaTurno.setAttribute('min', hoy);
 }
 
-// --- Lógica Clienta Express en Turnos ---
 const btnNuevaExpress = document.getElementById('btnNuevaClientaExpress');
 const btnCancelarExpress = document.getElementById('btnCancelarExpress');
 const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
@@ -211,13 +211,10 @@ if (btnCancelarExpress) {
     });
 }
 
-// --- Guardar Turno ---
-// --- Filtrar Profesionales (La magia de las áreas) ---
 async function filtrarProfesionalesPorServicio() {
     const idServicio = document.getElementById('servicioTurno').value;
     const selectEmpleada = document.getElementById('empleadaTurno');
     
-    // Si deseleccionan el servicio, bloqueamos a la empleada
     if (!idServicio) {
         selectEmpleada.innerHTML = '<option value="">Elegí el servicio primero...</option>';
         selectEmpleada.disabled = true;
@@ -244,7 +241,6 @@ async function filtrarProfesionalesPorServicio() {
             selectEmpleada.appendChild(opcion);
         });
         
-        // ¡Habilitamos el select!
         selectEmpleada.disabled = false;
         selectEmpleada.style.backgroundColor = "#ffffff";
         
@@ -253,13 +249,10 @@ async function filtrarProfesionalesPorServicio() {
     }
 }
 
-
-// --- Guardar Turno (Bug de clienta Express solucionado) ---
 async function guardarTurno() {
     let idClientaFinal;
     const grupoExpress = document.getElementById('grupoClientaExpress');
 
-    // PASO 1: RESOLVER LA CLIENTA (Buscarla o crearla)
     if (grupoExpress && (grupoExpress.style.display === 'block' || grupoExpress.style.display === '')) {
         const inputNombreExpress = document.getElementById('inputNombreExpress');
         const inputApellidoExpress = document.getElementById('inputApellidoExpress');
@@ -273,7 +266,6 @@ async function guardarTurno() {
         }
         
         try {
-            // Creamos la clienta primero
             const respuestaClienta = await fetch('http://localhost:3000/api/clientas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -282,7 +274,6 @@ async function guardarTurno() {
 
             if (respuestaClienta.ok) {
                 const dataClienta = await respuestaClienta.json();
-                // Tomamos el ID que nos devuelve la base de datos
                 idClientaFinal = dataClienta.id || dataClienta.Id_Clienta; 
             } else {
                 mostrarNotificacion("Hubo un error al registrar la clienta nueva.", "error");
@@ -294,7 +285,6 @@ async function guardarTurno() {
             return;
         }
     } else {
-        // Es una clienta existente
         const selectClienta = document.getElementById('selectClientaTurno');
         idClientaFinal = selectClienta ? selectClienta.value : null;
         if (!idClientaFinal) {
@@ -303,7 +293,6 @@ async function guardarTurno() {
         }
     }
 
-    // PASO 2: OBTENER Y VALIDAR LOS DATOS DEL TURNO
     const idServicio = document.getElementById('servicioTurno').value;
     const idEmpleada = document.getElementById('empleadaTurno').value;
     const fecha = document.getElementById('fechaTurnoInput').value;
@@ -327,7 +316,6 @@ async function guardarTurno() {
         Fecha_Hora: fechaHoraCompleta
     };
 
-    // PASO 3: GUARDAR EL TURNO DEFINITIVO
     try {
         const respuesta = await fetch('http://localhost:3000/api/turnos', {
             method: 'POST',
@@ -349,9 +337,7 @@ async function guardarTurno() {
     }
 }
 
-// --- Atajo: Agendar turno desde la tarjeta de Clienta ---
 function agendarTurnoRapido(idClienta) {
-    // 1. Nos aseguramos de que el selector clásico esté visible (y el express oculto)
     const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
     const grupoExpress = document.getElementById('grupoClientaExpress');
     
@@ -360,23 +346,19 @@ function agendarTurnoRapido(idClienta) {
         grupoSeleccion.style.display = 'block';
     }
 
-    // 2. Buscamos el desplegable y le asignamos mágicamente el ID de la clienta
     const selectClienta = document.getElementById('selectClientaTurno');
     if (selectClienta) {
         selectClienta.value = idClienta;
     }
 
-    // 3. Abrimos el modal de turnos
     abrirModalTurno();
 }
 
-// --- Cargar Servicios en el desplegable de Turnos ---
 async function cargarServicios() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/servicios');
         const servicios = await respuesta.json();
         
-        // ¡Magia arreglada! Ahora busca el ID 'servicioTurno' de tu nuevo HTML
         const selectServicio = document.getElementById('servicioTurno');
         if (selectServicio) {
             selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
@@ -393,41 +375,34 @@ async function cargarServicios() {
     }
 }
 
-// --- Inicializar y dibujar la Agenda Diaria ---
 async function inicializarAgendaDiaria() {
     try {
-        // 1. Buscamos a las profesionales en la base de datos
         const respuesta = await fetch('http://localhost:3000/api/empleadas');
         const empleadas = await respuesta.json();
 
-        // 2. Dibujamos el Encabezado (Los nombres arriba)
         const agendaHeader = document.getElementById('agendaHeader');
         if (agendaHeader) {
             agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
             empleadas.forEach(emp => {
-                // Asumimos que la columna de tu tabla se llama Nombre_Ap
                 agendaHeader.innerHTML += `<div style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
             });
         }
 
-        // 3. Dibujamos el Cuerpo (Las filas de 30 min y las celdas vacías)
         const agendaBody = document.getElementById('agendaBody');
         if (!agendaBody) return;
         
         agendaBody.innerHTML = ''; 
         
-        const horaInicio = 9; // 09:00 hs
-        const horaFin = 20;   // 20:00 hs
+        const horaInicio = 9; 
+        const horaFin = 20;   
         
         for (let hora = horaInicio; hora <= horaFin; hora++) {
-            // --- Bloque de la hora en punto (XX:00) ---
             let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
             let filaEnPunto = document.createElement('div');
             filaEnPunto.className = 'agenda-row hora-en-punto';
             
             let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
             
-            // Creamos un "cuadradito" vacío por cada profesional para esta hora
             empleadas.forEach(emp => {
                 htmlFilaEnPunto += `<div class="agenda-celda" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
             });
@@ -435,7 +410,6 @@ async function inicializarAgendaDiaria() {
             filaEnPunto.innerHTML = htmlFilaEnPunto;
             agendaBody.appendChild(filaEnPunto);
             
-            // --- Bloque de la media hora (XX:30) ---
             if (hora < horaFin) {
                 let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
                 let filaMediaHora = document.createElement('div');
@@ -443,7 +417,6 @@ async function inicializarAgendaDiaria() {
                 
                 let htmlFilaMedia = `<div class="hora-col">${stringHoraMedia}</div>`;
                 
-                // Creamos un "cuadradito" vacío por cada profesional para esta media hora
                 empleadas.forEach(emp => {
                     htmlFilaMedia += `<div class="agenda-celda" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
                 });
@@ -452,19 +425,16 @@ async function inicializarAgendaDiaria() {
                 agendaBody.appendChild(filaMediaHora);
             }
         }
-        // 4. Escuchar los cambios de fecha (Input manual y Flechas)
+        
         const inputFecha = document.getElementById('fechaAgendaInput');
         const btnAnterior = document.getElementById('btnDiaAnterior');
         const btnSiguiente = document.getElementById('btnDiaSiguiente');
 
         if (inputFecha) {
-            // Si elige la fecha en el calendario del input
             inputFecha.addEventListener('change', cargarTurnosAgenda);
             
-            // Flecha para ATRÁS
             if (btnAnterior) {
                 btnAnterior.addEventListener('click', () => {
-                    // El 'T00:00:00' evita que el navegador se confunda con la zona horaria
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
                     fechaActual.setDate(fechaActual.getDate() - 1);
                     
@@ -473,11 +443,10 @@ async function inicializarAgendaDiaria() {
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
                     
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                    cargarTurnosAgenda(); 
                 });
             }
 
-            // Flecha para ADELANTE
             if (btnSiguiente) {
                 btnSiguiente.addEventListener('click', () => {
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
@@ -488,23 +457,20 @@ async function inicializarAgendaDiaria() {
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
                     
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                    cargarTurnosAgenda(); 
                 });
             }
         }
 
-        // 5. Cargar los turnos del día de hoy por primera vez
         cargarTurnosAgenda();
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
 }
 
-// --- Poner la fecha de hoy por defecto al cargar ---
 function inicializarFechaAgenda() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (inputFecha) {
-        // Obtenemos la fecha actual y la formateamos a YYYY-MM-DD
         const hoy = new Date();
         const yyyy = hoy.getFullYear();
         const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -514,7 +480,6 @@ function inicializarFechaAgenda() {
     }
 }
 
-// --- Alternar entre Vista Diaria y Semanal ---
 function cambiarVistaAgenda(vista) {
     const vistaDiaria = document.getElementById('vistaDiaria');
     const vistaSemanal = document.getElementById('vistaSemanal');
@@ -524,19 +489,16 @@ function cambiarVistaAgenda(vista) {
     if (vista === 'diaria') {
         vistaDiaria.style.display = 'block';
         vistaSemanal.style.display = 'none';
-        
         btnDiaria.classList.add('active');
         btnSemanal.classList.remove('active');
     } else {
         vistaDiaria.style.display = 'none';
         vistaSemanal.style.display = 'block';
-        
         btnSemanal.classList.add('active');
         btnDiaria.classList.remove('active');
     }
 }
 
-// --- Cargar y dibujar los turnos en la grilla ---
 async function cargarTurnosAgenda() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (!inputFecha || !inputFecha.value) return;
@@ -545,28 +507,20 @@ async function cargarTurnosAgenda() {
         const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${inputFecha.value}`);
         const turnos = await respuesta.json();
 
-        // 1. Limpieza: Borramos las tarjetitas que ya estaban dibujadas
         document.querySelectorAll('.turno-card').forEach(card => card.remove());
 
-        // TRUCO DE DEBUG: Ver en consola qué estamos recibiendo
-        console.log("Turnos para el día:", turnos);
-
-        // 2. Dibujamos los nuevos turnos
         turnos.forEach(turno => {
-            // SOLUCIÓN ZONA HORARIA: Convertimos a Objeto Date y le pedimos la hora local
             const fechaObj = new Date(turno.Fecha_Hora);
             const horas = fechaObj.getHours().toString().padStart(2, '0');
             const minutos = fechaObj.getMinutes().toString().padStart(2, '0');
             const horaFormateada = `${horas}:${minutos}`; 
             
-            // Buscamos la coordenada exacta
             const celdaDestino = document.querySelector(`.agenda-celda[data-hora="${horaFormateada}"][data-id-empleada="${turno.Id_Empleada}"]`);
 
             if (celdaDestino) {
                 celdaDestino.style.position = 'relative'; 
 
-                // Matemática visual: 2 píxeles por cada minuto
-                const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; // El || 30 es un seguro por si falla la base
+                const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; 
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'turno-card';
@@ -589,8 +543,6 @@ async function cargarTurnosAgenda() {
                 `;
 
                 celdaDestino.appendChild(tarjeta);
-            } else {
-                console.warn(`No se encontró la celda para las ${horaFormateada} y empleada ID: ${turno.Id_Empleada}`);
             }
         });
     } catch (error) {
@@ -598,11 +550,11 @@ async function cargarTurnosAgenda() {
     }
 }
 
+
 // ==========================================================================
 // 4. MÓDULO DE CLIENTAS
 // ==========================================================================
 
-// --- Modal Clientas ---
 const modal = document.getElementById('modalNuevaClienta');
 
 function abrirModal() {
@@ -619,7 +571,6 @@ if (modal) {
     });
 }
 
-// --- Prepara el modal para CREAR de cero ---
 function prepararNuevaClienta() {
     document.getElementById('idClientaOculto').value = ''; 
     document.getElementById('nombreInput').value = '';
@@ -634,13 +585,11 @@ function prepararNuevaClienta() {
     abrirModal();
 }
 
-// --- Prepara el modal para EDITAR ---
 function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     document.getElementById('idClientaOculto').value = id; 
     document.getElementById('nombreInput').value = nombre;
     document.getElementById('apellidoInput').value = apellido;
     
-    // Tratamiento especial para la fecha
     if (fechaNac && fechaNac !== 'null' && fechaNac !== 'undefined') {
         document.getElementById('cumpleInput').value = fechaNac.split('T')[0];
     } else {
@@ -656,55 +605,66 @@ function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     abrirModal();
 }
 
-// --- Modal Perfil / Historial ---
-const modalPerfil = document.getElementById('modalPerfilClienta');
 
+// --- Lógica del Historial Estético (Modal Perfil) ---
 function cerrarModalPerfil() {
-    if (modalPerfil) modalPerfil.classList.remove('active');
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (modalPerfil) {
+        modalPerfil.classList.remove('active');
+    }
 }
 
-if (modalPerfil) {
-    modalPerfil.addEventListener('click', function(e) {
-        if(e.target === modalPerfil) cerrarModalPerfil();
-    });
-}
+window.addEventListener('click', function(e) {
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (e.target === modalPerfil) {
+        cerrarModalPerfil();
+    }
+});
 
-// --- Función para ver el perfil ---
 async function verPerfilClienta(idClienta, nombre, apellido) {
-    // 1. Ponemos el nombre de la clienta en el título
     document.getElementById('nombrePerfilClienta').textContent = `Historial de ${nombre} ${apellido}`;
     
     const listaHistorial = document.getElementById('listaHistorialClienta');
     listaHistorial.innerHTML = '<p style="text-align:center; color:#888;">Cargando historial...</p>';
     
-    // 2. Abrimos el modal
-    modalPerfil.classList.add('active');
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (modalPerfil) {
+        modalPerfil.classList.add('active');
+    }
 
     try {
-        // 3. Vamos a buscar los datos al backend
         const respuesta = await fetch(`http://localhost:3000/api/clientas/${idClienta}/historial`);
         const historial = await respuesta.json();
 
-        listaHistorial.innerHTML = ''; // Limpiamos el "Cargando..."
+        listaHistorial.innerHTML = ''; 
 
         if (historial.length === 0) {
-            listaHistorial.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Esta clienta aún no tiene turnos registrados. 💅</p>';
+            listaHistorial.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Esta clienta aún no tiene turnos registrados.</p>';
             return;
         }
 
-        // 4. Dibujamos cada turno pasado
         historial.forEach(turno => {
-            // Formateamos la fecha para que se lea linda (ej. "23/06/2026 - 15:30 hs")
             const fechaObj = new Date(turno.Fecha_Hora);
             const fechaLimpia = fechaObj.toLocaleDateString('es-AR');
             const horaLimpia = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+            let tagsHTML = '';
+            if (turno.Color) {
+                const detalles = turno.Color.split(',');
+                detalles.forEach(detalle => {
+                    tagsHTML += `<span style="background: #f0e6d2; color: #8b6d3b; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 5px; display: inline-block; margin-top: 8px;">${detalle.trim()}</span>`;
+                });
+            }
 
             const itemHTML = `
                 <div style="background-color: #f9f9f9; border-left: 4px solid var(--mostaza); padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;">
                     <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${turno.Nombre_Servicio}</div>
                     <div style="font-size: 13px; color: #666; display: flex; justify-content: space-between;">
-                        <span>📅 ${fechaLimpia} a las ${horaLimpia} hs</span>
-                        <span>👩‍💼 con ${turno.Nombre_Ap}</span>
+                        <span>Fecha: ${fechaLimpia} a las ${horaLimpia} hs</span>
+                        <span>Profesional: ${turno.Nombre_Ap}</span>
+                    </div>
+                    <div>
+                        ${tagsHTML}
                     </div>
                 </div>
             `;
@@ -717,7 +677,6 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
     }
 }
 
-// --- Alternar Vistas de Clientas ---
 function cambiarVistaClientas(vista) {
     const vistaTarjetas = document.getElementById('vistaClientasTarjetas');
     const vistaLista = document.getElementById('vistaClientasListado');
@@ -725,7 +684,7 @@ function cambiarVistaClientas(vista) {
     const btnLista = document.getElementById('btnVistaLista');
 
     if (vista === 'tarjetas') {
-        vistaTarjetas.style.display = 'grid'; // O el display que use tu clase cards-grid
+        vistaTarjetas.style.display = 'grid'; 
         vistaLista.style.display = 'none';
         btnTarjetas.classList.add('active');
         btnLista.classList.remove('active');
@@ -737,13 +696,11 @@ function cambiarVistaClientas(vista) {
     }
 }
 
-// --- Cargar Clientas (Genera tarjetas y filas simultáneamente) ---
 async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
         const clientas = await respuesta.json();
         
-        // 1. Llenar select del modal de turnos
         const selectTurno = document.getElementById('selectClientaTurno');
         if (selectTurno) {
             selectTurno.innerHTML = '<option value="">Seleccione una clienta...</option>';
@@ -755,7 +712,6 @@ async function cargarClientas() {
             });
         }
 
-        // 2. Traer los dos contenedores
         const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
         const tbodyLista = document.getElementById('tablaClientasBody');
         
@@ -769,9 +725,8 @@ async function cargarClientas() {
             }
             const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
-            // A. DIBUJAR TARJETA
             const tarjetaHTML = `
-                <div class="card item-clienta-busqueda"> <!-- Clase unificada para buscar -->
+                <div class="card item-clienta-busqueda"> 
                     <div class="card-header">
                         <div class="avatar">${iniciales}</div>
                         <div class="client-info">
@@ -792,7 +747,6 @@ async function cargarClientas() {
             `;
             if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
 
-            // B. DIBUJAR FILA DE LISTA
             const filaHTML = `
                 <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
@@ -813,7 +767,6 @@ async function cargarClientas() {
     }
 }
 
-// --- Guardar Clienta (POST y PUT) ---
 async function guardarClienta() {
     const idOculto = document.getElementById('idClientaOculto').value;
     const nombre = document.getElementById('nombreInput').value.trim();
@@ -862,31 +815,29 @@ async function guardarClienta() {
     }
 }
 
-// --- Buscador de Clientas Universal ---
 const inputBuscador = document.getElementById('buscadorClientas');
 if (inputBuscador) {
     inputBuscador.addEventListener('input', function(evento) {
         const textoBuscado = evento.target.value.toLowerCase();
         
-        // Agarramos TANTO las tarjetas COMO las filas de la tabla
         const elementosClienta = document.querySelectorAll('.item-clienta-busqueda');
         
         elementosClienta.forEach(elemento => {
             const nombreClienta = elemento.querySelector('.nombre-para-buscar').textContent.toLowerCase();
             if (nombreClienta.includes(textoBuscado)) {
-                elemento.style.display = ''; // Lo vuelve a mostrar en su formato original
+                elemento.style.display = ''; 
             } else {
-                elemento.style.display = 'none'; // Lo oculta
+                elemento.style.display = 'none'; 
             }
         });
     });
 }
 
+
 // ==========================================================================
 // 5. MÓDULO DE EMPLEADAS
 // ==========================================================================
 
-// --- Modal Empleadas ---
 const modalEmpleada = document.getElementById('modalNuevaEmpleada');
 
 function abrirModalEmpleada() {
@@ -903,7 +854,6 @@ if (modalEmpleada) {
     });
 }
 
-// --- Prepara el modal para CREAR de cero ---
 function prepararNuevaEmpleada() {
     document.getElementById('idEmpleadaOculto').value = ''; 
     document.getElementById('nombreEmpleadaInput').value = '';
@@ -915,11 +865,9 @@ function prepararNuevaEmpleada() {
     abrirModalEmpleada();
 }
 
-// --- Prepara el modal para EDITAR ---
 function abrirModalEditarEmpleada(id, nombre, dni) {
     document.getElementById('idEmpleadaOculto').value = id; 
     document.getElementById('nombreEmpleadaInput').value = nombre;
-    
     document.getElementById('dniEmpleadaInput').value = (dni === '-' || !dni) ? '' : dni;
     
     document.getElementById('tituloModalEmpleada').textContent = 'Editar Profesional';
@@ -928,7 +876,6 @@ function abrirModalEditarEmpleada(id, nombre, dni) {
     abrirModalEmpleada();
 }
 
-// --- Guardar (Sirve para POST y PUT) ---
 async function guardarEmpleada() {
     const idOculto = document.getElementById('idEmpleadaOculto').value;
     const nombre = document.getElementById('nombreEmpleadaInput').value.trim();
@@ -975,28 +922,21 @@ async function guardarEmpleada() {
     }
 }
 
-// --- Cargar Empleadas (Dibuja las tarjetas) ---
 async function cargarEmpleadas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/empleadas');
         const empleadas = await respuesta.json();
-        // ================================================================
-        // NUEVO: Llenamos el desplegable de Profesionales en el modal de Turnos
-        // ================================================================
+
         const selectEmpleada = document.getElementById('selectEmpleadaTurno');
         if (selectEmpleada) {
-            // Limpiamos las opciones viejas
             selectEmpleada.innerHTML = '<option value="">Seleccione...</option>';
-            
-            // Agregamos a cada chica disponible
             empleadas.forEach(empleada => {
                 const opcion = document.createElement('option');
-                opcion.value = empleada.Id_Empleada; // El ID real de la base de datos
-                opcion.textContent = empleada.Nombre_Ap; // El nombre que ve la clienta
+                opcion.value = empleada.Id_Empleada; 
+                opcion.textContent = empleada.Nombre_Ap; 
                 selectEmpleada.appendChild(opcion);
             });
         }
-        // ================================================================
         
         const contenedor = document.getElementById('contenedorEmpleadas');
         if (!contenedor) return; 
@@ -1029,6 +969,29 @@ async function cargarEmpleadas() {
     }
 }
 
+async function eliminarEmpleada(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
+    
+    if (!confirmacion) return; 
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Profesional dada de baja con éxito.", "success");
+            cargarEmpleadas(); 
+        } else {
+            mostrarNotificacion("Hubo un error al intentar eliminar en la base de datos.", "error");
+        }
+    } catch (error) {
+        console.error("Error eliminando empleada:", error);
+        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
+}
+
+
 // ==========================================================================
 // 6. MÓDULO DE GASTOS
 // ==========================================================================
@@ -1055,7 +1018,6 @@ function prepararNuevoGasto() {
     document.getElementById('montoGastoInput').value = '';
     document.getElementById('selectCategoriaGasto').value = '';
     
-    // Ponemos la fecha de hoy por defecto
     const hoy = new Date();
     const yyyy = hoy.getFullYear();
     const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -1066,28 +1028,8 @@ function prepararNuevoGasto() {
     abrirModalGasto();
 }
 
-// Llenar el desplegable con las categorías de SQL
-async function cargarCategoriasGasto() {
-    try {
-        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
-        const categorias = await respuesta.json();
-        
-        const select = document.getElementById('selectCategoriaGasto');
-        if (select) {
-            select.innerHTML = '<option value="">Seleccione...</option>';
-            categorias.forEach(cat => {
-                select.innerHTML += `<option value="${cat.Id_Categoria}">${cat.Nombre}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error("Error conectando con la API de categorías:", error);
-    }
-}
-
-// Variable global para guardar todos los gastos en memoria
 let memoriaGastos = [];
 
-// Llenar el desplegable con las categorías (Actualizado para llenar también el filtro)
 async function cargarCategoriasGasto() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
@@ -1109,30 +1051,26 @@ async function cargarCategoriasGasto() {
     }
 }
 
-// Traer los gastos de la base de datos
 async function cargarGastos() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/gastos');
-        memoriaGastos = await respuesta.json(); // Guardamos todo en memoria
-        aplicarFiltrosGastos(); // Dibujamos pasando por el filtro
+        memoriaGastos = await respuesta.json(); 
+        aplicarFiltrosGastos(); 
     } catch (error) {
         console.error("Error conectando con la API de gastos:", error);
     }
 }
 
-// Función que filtra y dibuja la tabla (AHORA CON AÑO)
 function aplicarFiltrosGastos() {
     const mesSeleccionado = document.getElementById('filtroMesGasto').value;
     const catSeleccionada = document.getElementById('filtroCategoriaGasto').value;
-    
-    // Capturamos el año (si existe el filtro, si no, 'todos')
     const filtroAnio = document.getElementById('filtroAnioGasto');
     const anioSeleccionado = filtroAnio ? filtroAnio.value : 'todos';
     
     const gastosFiltrados = memoriaGastos.filter(gasto => {
         const fechaObj = new Date(gasto.Fecha);
         const mesGasto = fechaObj.getUTCMonth().toString();
-        const anioGasto = fechaObj.getUTCFullYear().toString(); // Extraemos el año
+        const anioGasto = fechaObj.getUTCFullYear().toString(); 
         const categoriaGasto = gasto.Nombre_Categoria || 'Sin tipo';
         
         const pasaFiltroMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
@@ -1145,7 +1083,6 @@ function aplicarFiltrosGastos() {
     dibujarTablaGastos(gastosFiltrados);
 }
 
-// Función exclusiva para pintar el HTML
 function dibujarTablaGastos(listaGastos) {
     const tbody = document.getElementById('tablaGastosBody');
     if (!tbody) return;
@@ -1177,7 +1114,6 @@ function dibujarTablaGastos(listaGastos) {
     });
 }
 
-// Guardar el Gasto en la base de datos
 async function guardarGasto() {
     const desc = document.getElementById('descGastoInput').value.trim();
     const fecha = document.getElementById('fechaGastoInput').value;
@@ -1233,30 +1169,6 @@ async function eliminarGasto(id) {
     }
 }
 
-// --- Eliminar Empleada (Con Promesa Estética) ---
-async function eliminarEmpleada(id) {
-    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
-    
-    if (!confirmacion) return; 
-
-    try {
-        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
-            method: 'DELETE'
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("Profesional dada de baja con éxito.", "success");
-            cargarEmpleadas(); 
-        } else {
-            mostrarNotificacion("Hubo un error al intentar eliminar en la base de datos.", "error");
-        }
-    } catch (error) {
-        console.error("Error eliminando empleada:", error);
-        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
-    }
-}
-
-// --- Lógica del Modal de Nueva Categoría ---
 const modalCategoria = document.getElementById('modalNuevaCategoria');
 
 function abrirModalNuevaCategoria() {
@@ -1286,8 +1198,6 @@ async function guardarNuevaCategoria() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Categoría creada con éxito!", "success");
             cerrarModalNuevaCategoria();
-            
-            // Volvemos a cargar las categorías para que aparezca en el desplegable
             await cargarCategoriasGasto(); 
         } else {
             mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
@@ -1298,9 +1208,11 @@ async function guardarNuevaCategoria() {
     }
 }
 
+
 // ==========================================================================
 // 7. MÓDULO DE INGRESOS
 // ==========================================================================
+
 async function cargarIngresos() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/ingresos');
@@ -1317,18 +1229,13 @@ async function cargarIngresos() {
         }
 
         ingresos.forEach(ingreso => {
-            // 1. EXTRAEMOS LA FECHA SEGURA (YYYY-MM-DD)
             const fechaCorta = ingreso.Fecha.split('T')[0]; 
-            
-            // 2. LA FORMATEAMOS PARA QUE SE VEA LINDA (DD/MM/YYYY)
             const partes = fechaCorta.split('-');
             const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
 
-            // Lógica para diferenciar turnos de ingresos manuales
             const clientaMostrar = ingreso.Nombre_Clienta ? ingreso.Nombre_Clienta : '<span style="color:#aaa;">- Mostrador -</span>';
             const servicioMostrar = ingreso.Concepto ? `Extra: ${ingreso.Concepto}` : ingreso.Nombre_Servicio;
 
-            // 3. ARMAMOS LA FILA Y LE GUARDAMOS LA FECHA INVISIBLE (data-fecha)
             const filaHTML = `
                 <tr style="border-bottom: 1px solid #eee;" data-fecha="${fechaCorta}">
                     <td style="padding: 12px;">${fechaFormateada}</td>
@@ -1344,7 +1251,7 @@ async function cargarIngresos() {
             `;
             tbody.innerHTML += filaHTML;
         }); 
-        // Una vez que se cargan todos los datos, llamamos al filtro para que calcule el total inicial
+        
         filtrarIngresos();
 
     } catch (error) {
@@ -1353,16 +1260,15 @@ async function cargarIngresos() {
     }
 }
 
-// Función para filtrar los ingresos y sumar el total visible
 function filtrarIngresos() {
     const textoBuscado = document.getElementById('filtroIngresos').value.toLowerCase();
     const fechaBuscadaInput = document.getElementById('filtroFechaIngresos').value; 
 
     const filas = document.querySelectorAll('#tablaIngresosBody tr');
-    let sumaTotal = 0; // Arrancamos el contador en 0
+    let sumaTotal = 0; 
 
     filas.forEach(fila => {
-        if (fila.cells.length === 1) return; // Ignorar la fila de "Cargando..."
+        if (fila.cells.length === 1) return; 
 
         const contenidoFila = fila.textContent.toLowerCase();
         const fechaFila = fila.getAttribute('data-fecha'); 
@@ -1373,12 +1279,7 @@ function filtrarIngresos() {
         if (cumpleTexto && cumpleFecha) {
             fila.style.display = '';
             
-            // Si la fila se muestra, extraemos el número y lo sumamos
-            // La plata está en la última columna (índice 4)
             const textoMonto = fila.cells[4].textContent;
-            
-            // Limpiamos el texto para que JavaScript entienda que es un número
-            // (Le sacamos el símbolo $, los puntos de los miles, y convertimos la coma en punto decimal si hubiera)
             const numeroLimpio = parseFloat(textoMonto.replace('$', '').replace(/\./g, '').replace(',', '.'));
             
             if (!isNaN(numeroLimpio)) {
@@ -1389,12 +1290,12 @@ function filtrarIngresos() {
         }
     });
 
-    // Escribimos el resultado final en nuestro nuevo pie de tabla
     const celdaTotal = document.getElementById('totalIngresosFiltrados');
     if (celdaTotal) {
         celdaTotal.textContent = '$' + sumaTotal.toLocaleString('es-AR');
     }
 }
+
 
 // ==========================================================================
 // 8. MÓDULO DE COBRO Y EXTRAS
@@ -1402,7 +1303,7 @@ function filtrarIngresos() {
 
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
-const SENA_ABONADA = 8000; // Valor fijo de la seña
+const SENA_ABONADA = 8000; 
 
 function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase, estado, color) {
     precioBaseActual = parseFloat(precioBase) || 0;
@@ -1412,16 +1313,12 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
     document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${servicioBase}`;
     document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
     
-    // Cargamos el color y el estado
-    // Limpiamos el input para que puedan escribir uno nuevo
     document.getElementById('colorTurnoInput').value = '';
     
-    // Armamos la lista de colores guardados
     const contenedorColores = document.getElementById('listaColoresGuardados');
-    contenedorColores.innerHTML = ''; // Limpiar anteriores
+    contenedorColores.innerHTML = ''; 
     
     if (color) {
-        // Separamos los colores por el palito ' | ' que le pusimos en la base de datos
         const arrayColores = color.split(' | ');
         arrayColores.forEach(c => {
             contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${c}</span>`;
@@ -1430,14 +1327,12 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
     const badgeEstado = document.getElementById('estadoTurnoBadge');
     badgeEstado.textContent = estado || 'Pendiente';
     
-    // Referencias a los botones e inputs
-    const btnCobrar = document.getElementById('btnConfirmarCobro'); // Asegurate que tu botón HTML tenga este ID
+    const btnCobrar = document.getElementById('btnConfirmarCobro'); 
     const btnGuardar = document.getElementById('btnGuardarDetalles');
     const inputColor = document.getElementById('colorTurnoInput');
     const inputDescuento = document.getElementById('descuentoCobroInput');
     const checkboxes = document.querySelectorAll('.check-extra');
     
-    // LÓGICA DE BLOQUEO SI YA ESTÁ PAGADO
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
         badgeEstado.style.color = '#155724';
@@ -1452,7 +1347,6 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
         inputDescuento.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
     } else {
-        // Si está pendiente o en progreso, dejamos todo habilitado
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
         badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
         
@@ -1474,7 +1368,6 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
-// Nueva función que usan las chicas para guardar el color sin cobrar
 async function guardarDetallesTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const colorElegido = document.getElementById('colorTurnoInput').value;
@@ -1493,8 +1386,6 @@ async function guardarDetallesTurno() {
         
         if (respuesta.ok) {
             mostrarNotificacion("¡Color agregado!", "success");
-            
-            // Acá hacemos lo que pediste: recargamos la página cortito para que todo se actualice
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -1517,7 +1408,6 @@ if (modalDetalleTurno) {
     });
 }
 
-// Traer la lista de extras desde SQL y armar los checkboxes
 async function cargarExtrasDisponibles() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/extras');
@@ -1526,7 +1416,7 @@ async function cargarExtrasDisponibles() {
         const contenedor = document.getElementById('contenedorExtras');
         if (!contenedor) return;
 
-        contenedor.innerHTML = ''; // Limpiar el texto "Cargando..."
+        contenedor.innerHTML = ''; 
 
         extras.forEach(extra => {
             const div = document.createElement('div');
@@ -1550,46 +1440,36 @@ async function cargarExtrasDisponibles() {
     }
 }
 
-// LA MAGIA DE LA SUMA: Se ejecuta cada vez que tildan un extra o cambian el descuento
 function recalcularTotalCobro() {
     let sumaExtras = 0;
     
-    // Sumar todos los extras que estén tildados en ese momento
     const checkboxes = document.querySelectorAll('.check-extra:checked');
     checkboxes.forEach(chk => {
         sumaExtras += parseFloat(chk.value);
     });
 
-    // Obtener lo que hayan tipeado en "Descuento"
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
-    // Fórmula: Precio Base + Extras - Descuento - Seña
     let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
     
-    // Evitar que el total dé negativo
     if (totalFinal < 0) totalFinal = 0;
 
-    // Pintar el resultado verde gigante en el HTML
     document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
 }
 
-// Escuchar si tipean en la cajita de descuento para recalcular en vivo
 const inputDescuento = document.getElementById('descuentoCobroInput');
 if (inputDescuento) {
     inputDescuento.addEventListener('input', recalcularTotalCobro);
 }
 
-// Función para mandar la plata a la base de datos
 async function confirmarCobroTurno() {
-    // 1. Recolectar la información básica
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const medioPago = document.getElementById('selectMedioPago').value;
     
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
     
-    // 2. Recolectar los IDs de los extras que están tildados
     const extrasSeleccionados = [];
     let sumaExtras = 0;
     
@@ -1599,11 +1479,9 @@ async function confirmarCobroTurno() {
         sumaExtras += parseFloat(chk.value);
     });
 
-    // 3. Calcular el total exacto que se va a enviar
     let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
     if (totalFinal < 0) totalFinal = 0;
 
-    // Armamos el paquetito de datos para enviar
     const datosCobro = {
         idTurno: parseInt(idTurno),
         montoTotal: totalFinal,
@@ -1613,7 +1491,6 @@ async function confirmarCobroTurno() {
     };
 
     try {
-        // Le tocamos la puerta al backend
         const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
             method: 'POST',
             headers: {
@@ -1674,7 +1551,7 @@ async function guardarIngresoManual() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Ingreso extra registrado!", "success");
             cerrarModalNuevoIngreso();
-            cargarIngresos(); // Recarga la tabla al instante sin recargar la página entera
+            cargarIngresos(); 
         } else {
             mostrarNotificacion("Error al guardar el ingreso.", "error");
         }

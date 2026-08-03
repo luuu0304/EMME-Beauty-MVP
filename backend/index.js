@@ -5,15 +5,25 @@ const sql = require('mssql');
 const app = express();
 const port = 3000;
 
-// ==========================================
-// 1. MIDDLEWARES
-// ==========================================
+// ==========================================================================
+// ÍNDICE DEL BACKEND (API REST)
+// 1. MIDDLEWARES & CONFIGURACIÓN
+// 2. RUTAS: CLIENTAS
+// 3. RUTAS: EMPLEADAS
+// 4. RUTAS: SERVICIOS & EXTRAS
+// 5. RUTAS: TURNOS & AGENDA
+// 6. RUTAS: GASTOS & CATEGORÍAS
+// 7. RUTAS: INGRESOS & COBROS
+// 8. INICIO DEL SERVIDOR
+// ==========================================================================
+
+
+// ==========================================================================
+// 1. MIDDLEWARES & CONFIGURACIÓN DE LA BASE DE DATOS
+// ==========================================================================
 app.use(cors());
 app.use(express.json());
 
-// ==========================================
-// 2. CONFIGURACIÓN DE LA BASE DE DATOS
-// ==========================================
 const dbConfig = {
     user: 'sa',
     password: 'TThmA4bmPfPUk*',
@@ -22,22 +32,21 @@ const dbConfig = {
     options: {
         encrypt: true,
         trustServerCertificate: true, // Fundamental para Mac/Docker
-        useUTC: false // Fix de Zona Horaria: guarda la hora exacta sin sumar de más
+        useUTC: false // Fix de Zona Horaria
     }
 };
 
-// ==========================================
-// 3. RUTAS DEL SISTEMA
-// ==========================================
-
-// Ruta base para probar si el backend responde
+// Ruta base de testeo
 app.get('/', (req, res) => {
     res.send('¡Hola! El backend de EMME Beauty está vivo 💅✨');
 });
 
-// --- SECCIÓN: CLIENTAS ---
 
-// Obtener todas las clientas (para armar las tarjetas de la grilla)
+// ==========================================================================
+// 2. RUTAS: CLIENTAS
+// ==========================================================================
+
+// Obtener todas las clientas
 app.get('/api/clientas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -49,7 +58,7 @@ app.get('/api/clientas', async (req, res) => {
     }
 });
 
-// Registrar una nueva clienta (¡Ahora con OUTPUT para devolver el nuevo ID!)
+// Registrar una nueva clienta (Devuelve el ID generado)
 app.post('/api/clientas', async (req, res) => {
     try {
         const { Nombre, Apellido, Fecha_Nac, Telefono, Ig } = req.body;
@@ -67,20 +76,17 @@ app.post('/api/clientas', async (req, res) => {
                 VALUES (@Nombre, @Apellido, @Fecha_Nac, @Telefono, @Ig)
             `);
             
-        const nuevoId = resultado.recordset[0].Id_Clienta;
-
         res.status(201).json({ 
             mensaje: "Clienta creada con éxito",
-            Id_Clienta: nuevoId 
+            Id_Clienta: resultado.recordset[0].Id_Clienta 
         });
-
     } catch (error) {
         console.error("Error al insertar clienta:", error);
         res.status(500).send("Error interno al guardar la clienta");
     }
 });
 
-// Actualizar (Editar) una clienta existente
+// Actualizar una clienta existente
 app.put('/api/clientas/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -107,17 +113,20 @@ app.put('/api/clientas/:id', async (req, res) => {
     }
 });
 
-// Obtener el historial de turnos de una clienta
+// Obtener el historial estético de una clienta
 app.get('/api/clientas/:id/historial', async (req, res) => {
     try {
         const { id } = req.params;
         let pool = await sql.connect(dbConfig);
         
-        // Hacemos un JOIN para traer los nombres del servicio y la empleada, ordenados por fecha
         let result = await pool.request()
             .input('Id_Clienta', sql.Int, id)
             .query(`
-                SELECT t.Fecha_Hora, s.Nombre AS Nombre_Servicio, e.Nombre_Ap
+                SELECT 
+                    t.Fecha_Hora, 
+                    s.Nombre AS Nombre_Servicio, 
+                    e.Nombre_Ap,
+                    t.Color
                 FROM Turno t
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
                 JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
@@ -132,13 +141,172 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
     }
 });
 
-// ==========================================
-// MÓDULO DE AGENDA DIARIA
-// ==========================================
-// Obtener los turnos de una fecha específica
+
+// ==========================================================================
+// 3. RUTAS: EMPLEADAS
+// ==========================================================================
+
+// Obtener todas las empleadas
+app.get('/api/empleadas', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query("SELECT * FROM Empleada");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo empleadas: ", err);
+        res.status(500).send("Error conectando a la base de datos");
+    }
+});
+
+// Obtener empleadas habilitadas según el servicio (Filtro Inteligente)
+app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
+    try {
+        const { idServicio } = req.params;
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input('Id_Servicio', sql.Int, idServicio)
+            .query(`
+                SELECT 
+                    e.Id_Empleada, 
+                    e.Nombre_Ap AS Nombre, 
+                    '' AS Apellido 
+                FROM Empleada e
+                JOIN Empleada_Area ea ON e.Id_Empleada = ea.Id_Empleada
+                JOIN Servicio s ON ea.Area = s.Area
+                WHERE s.Id_Servicio = @Id_Servicio
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error filtrando empleadas por servicio:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Registrar una nueva empleada
+app.post('/api/empleadas', async (req, res) => {
+    try {
+        const { Nombre_Ap, Dni } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
+            .input('Dni', sql.VarChar, Dni || null)
+            .query(`INSERT INTO Empleada (Nombre_Ap, Dni) VALUES (@Nombre_Ap, @Dni)`);
+            
+        res.status(201).send("Empleada creada correctamente");
+    } catch (error) {
+        console.error("Error al insertar empleada:", error);
+        res.status(500).send("Error interno al guardar la empleada");
+    }
+});
+
+// Actualizar una empleada existente
+app.put('/api/empleadas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { Nombre_Ap, Dni } = req.body;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
+            .input('Dni', sql.VarChar, Dni || null)
+            .query(`
+                UPDATE Empleada 
+                SET Nombre_Ap = @Nombre_Ap, Dni = @Dni
+                WHERE Id_Empleada = @Id_Empleada
+            `);
+            
+        res.status(200).send("Profesional actualizada correctamente");
+    } catch (error) {
+        console.error("Error al actualizar empleada:", error);
+        res.status(500).send("Error interno al actualizar");
+    }
+});
+
+// Eliminar (Dar de baja) una empleada
+app.delete('/api/empleadas/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        
+        await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .query(`DELETE FROM Empleada WHERE Id_Empleada = @Id_Empleada`);
+            
+        res.status(200).send("Profesional dada de baja correctamente");
+    } catch (error) {
+        console.error("Error al eliminar empleada:", error);
+        res.status(500).send("Error interno al eliminar la empleada");
+    }
+});
+
+
+// ==========================================================================
+// 4. RUTAS: SERVICIOS & EXTRAS
+// ==========================================================================
+
+// Obtener todos los servicios
+app.get('/api/servicios', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query('SELECT Id_Servicio, Nombre FROM Servicio');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo servicios:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener todos los extras disponibles
+app.get('/api/extras', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query("SELECT * FROM Extra ORDER BY Nombre");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo extras:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+
+// ==========================================================================
+// 5. RUTAS: TURNOS & AGENDA
+// ==========================================================================
+
+// Obtener todos los turnos formateados para la Agenda Semanal (FullCalendar)
+app.get('/api/turnos', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        const resultado = await pool.request().query(`
+            SELECT 
+                t.Id_Turno AS id,
+                t.Id_Turno,
+                t.Id_Empleada,
+                c.Nombre + ' ' + c.Apellido + ' - ' + s.Nombre + ' (' + e.Nombre_Ap + ')' AS title,
+                t.Fecha_Hora AS start,
+                t.Fecha_Hora_Fin AS [end],
+                c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                s.Nombre AS Nombre_Servicio,
+                s.Precio_Base AS Precio
+            FROM Turno t
+            JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+            JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
+            JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+        `);
+        res.json(resultado.recordset);
+    } catch (error) {
+        console.error("Error trayendo turnos:", error);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener los turnos de una fecha específica (Agenda Diaria)
 app.get('/api/turnos/fecha/:fecha', async (req, res) => {
     try {
-        const { fecha } = req.params; // Llega en formato YYYY-MM-DD
+        const { fecha } = req.params; 
         let pool = await sql.connect(dbConfig);
         
         let result = await pool.request()
@@ -167,196 +335,72 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
     }
 });
 
-// --- SECCIÓN: EMPLEADOS ---
-
-// Obtener todas las empleadas para armar sus tarjetas
-app.get('/api/empleadas', async (req, res) => {
-    try {
-        let pool = await sql.connect(dbConfig);
-        // Buscamos todas las chicas en la tabla Empleada
-        let result = await pool.request().query("SELECT * FROM Empleada");
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error trayendo empleadas: ", err);
-        res.status(500).send("Error conectando a la base de datos");
-    }
-});
-
-// Registrar una nueva empleada
-app.post('/api/empleadas', async (req, res) => {
-    try {
-        const { Nombre_Ap, Dni } = req.body;
-        let pool = await sql.connect(dbConfig);
-        
-        await pool.request()
-            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
-            .input('Dni', sql.VarChar, Dni || null)
-            .query(`
-                INSERT INTO Empleada (Nombre_Ap, Dni)
-                VALUES (@Nombre_Ap, @Dni)
-            `);
-            
-        res.status(201).send("Empleada creada correctamente");
-    } catch (error) {
-        console.error("Error al insertar empleada:", error);
-        res.status(500).send("Error interno al guardar la empleada");
-    }
-});
-
-// Dar de baja (eliminar) una empleada
-app.delete('/api/empleadas/:id', async (req, res) => {
-    try {
-        const { id } = req.params; // Agarramos el ID que viene en la URL
-        let pool = await sql.connect(dbConfig);
-        
-        await pool.request()
-            .input('Id_Empleada', sql.Int, id)
-            .query(`
-                DELETE FROM Empleada 
-                WHERE Id_Empleada = @Id_Empleada
-            `);
-            
-        res.status(200).send("Profesional dada de baja correctamente");
-    } catch (error) {
-        console.error("Error al eliminar empleada:", error);
-        res.status(500).send("Error interno al eliminar la empleada");
-    }
-});
-
-// Actualizar (Editar) una empleada existente
-app.put('/api/empleadas/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { Nombre_Ap, Dni } = req.body;
-        let pool = await sql.connect(dbConfig);
-        
-        await pool.request()
-            .input('Id_Empleada', sql.Int, id)
-            .input('Nombre_Ap', sql.VarChar, Nombre_Ap)
-            .input('Dni', sql.VarChar, Dni || null)
-            .query(`
-                UPDATE Empleada 
-                SET Nombre_Ap = @Nombre_Ap, Dni = @Dni
-                WHERE Id_Empleada = @Id_Empleada
-            `);
-            
-        res.status(200).send("Profesional actualizada correctamente");
-    } catch (error) {
-        console.error("Error al actualizar empleada:", error);
-        res.status(500).send("Error interno al actualizar");
-    }
-});
-
-
-// --- SECCIÓN: TURNOS ---
-
-// Obtener todos los turnos formateados para la Agenda
-app.get('/api/turnos', async (req, res) => {
-    try {
-        let pool = await sql.connect(dbConfig);
-        
-        const resultado = await pool.request().query(`
-            SELECT 
-                t.Id_Turno AS id,
-                t.Id_Turno,
-                t.Id_Empleada,
-                c.Nombre + ' ' + c.Apellido + ' - ' + s.Nombre + ' (' + e.Nombre_Ap + ')' AS title,
-                t.Fecha_Hora AS start,
-                t.Fecha_Hora_Fin AS [end],
-                c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
-                s.Nombre AS Nombre_Servicio,
-                s.Precio AS Precio
-            FROM Turno t
-            JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
-            JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada
-            JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
-        `);
-        
-        res.json(resultado.recordset);
-    } catch (error) {
-        console.error("Error trayendo turnos:", error);
-        res.status(500).send("Error interno del servidor");
-    }
-});
-
-// Recibir los datos del formulario y guardar un nuevo turno con validación
+// Crear un nuevo turno (Con validación de solapamiento)
 app.post('/api/turnos', async (req, res) => {
-    const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora } = req.body;
-
     try {
+        const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora } = req.body;
         let pool = await sql.connect(dbConfig);
 
-        // 1. VALIDACIÓN: Revisar si la profesional ya tiene un turno en esa fecha y hora exacta
-        const chequeo = await pool.request().query(`
-            SELECT Id_Turno FROM Turno 
-            WHERE Id_Empleada = ${Id_Empleada} AND Fecha_Hora = '${Fecha_Hora}'
-        `);
+        // Validación: Evitar doble reserva
+        const chequeo = await pool.request()
+            .input('Id_Empleada', sql.Int, Id_Empleada)
+            .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
+            .query(`SELECT Id_Turno FROM Turno WHERE Id_Empleada = @Id_Empleada AND Fecha_Hora = @Fecha_Hora`);
 
-        // Si recordset tiene al menos 1 elemento, significa que el horario está ocupado
         if (chequeo.recordset.length > 0) {
-            // Frenamos todo y le mandamos un error 400 (Bad Request) al frontend
             return res.status(400).send("La profesional ya tiene un turno agendado en ese horario.");
         }
 
-        // 2. Si el horario está libre, procedemos a guardar el turno
-        await pool.request().query(`
-            INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora) 
-            VALUES (${Id_Clienta}, ${Id_Empleada}, ${Id_Servicio}, '${Fecha_Hora}')
-        `);
+        await pool.request()
+            .input('Id_Clienta', sql.Int, Id_Clienta)
+            .input('Id_Empleada', sql.Int, Id_Empleada)
+            .input('Id_Servicio', sql.Int, Id_Servicio)
+            .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
+            .query(`
+                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora) 
+                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora)
+            `);
         
         res.status(201).json({ message: "¡Turno creado exitosamente!" });
-
     } catch (err) {
         console.error("Error al crear turno:", err);
         res.status(500).send("Error interno del servidor");
     }
 });
 
-// Obtener empleadas habilitadas según el servicio seleccionado
-app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
-    const { idServicio } = req.params;
-    
+// Actualizar detalles del turno durante la sesión (Color/Extras estéticos)
+app.put('/api/turnos/:id/detalles', async (req, res) => {
     try {
+        const { id } = req.params;
+        const { Color } = req.body; 
         let pool = await sql.connect(dbConfig);
-        let result = await pool.request()
-            .input('Id_Servicio', sql.Int, idServicio)
+        
+        await pool.request()
+            .input('Id_Turno', sql.Int, id)
+            .input('NuevoColor', sql.VarChar, Color)
             .query(`
-                SELECT 
-                    e.Id_Empleada, 
-                    e.Nombre_Ap AS Nombre, 
-                    '' AS Apellido 
-                FROM Empleada e
-                JOIN Empleada_Area ea ON e.Id_Empleada = ea.Id_Empleada
-                JOIN Servicio s ON ea.Area = s.Area
-                WHERE s.Id_Servicio = @Id_Servicio
+                UPDATE Turno 
+                SET Color = CASE 
+                                WHEN Color IS NULL OR Color = '' THEN @NuevoColor 
+                                ELSE Color + ' | ' + @NuevoColor 
+                            END,
+                    Estado = CASE WHEN Estado = 'Pendiente' THEN 'En progreso' ELSE Estado END
+                WHERE Id_Turno = @Id_Turno AND Estado != 'Pagado'
             `);
             
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error filtrando empleadas por servicio:", err);
-        res.status(500).send("Error interno del servidor");
+        res.status(200).send("Color agregado a la sesión.");
+    } catch (error) {
+        console.error("Error al guardar detalles:", error);
+        res.status(500).send("Error interno al actualizar el turno");
     }
 });
 
-// ==========================================
-// MÓDULO DE SERVICIOS
-// ==========================================
-// Obtener todos los servicios para el desplegable
-app.get('/api/servicios', async (req, res) => {
-    try {
-        let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query('SELECT Id_Servicio, Nombre FROM Servicio');
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error obteniendo servicios:", err);
-        res.status(500).send("Error interno del servidor");
-    }
-});
-// ==========================================
-// MÓDULO DE GASTOS
-// ==========================================
 
-// 1. Obtener las categorías para el menú desplegable
+// ==========================================================================
+// 6. RUTAS: GASTOS & CATEGORÍAS
+// ==========================================================================
+
+// Obtener categorías de gastos
 app.get('/api/categorias-gastos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -368,11 +412,28 @@ app.get('/api/categorias-gastos', async (req, res) => {
     }
 });
 
-// 2. Obtener todos los gastos para la tabla
+// Crear nueva categoría de gasto
+app.post('/api/categorias-gastos', async (req, res) => {
+    try {
+        const { Nombre } = req.body;
+        if (!Nombre) return res.status(400).send("El nombre es obligatorio");
+
+        let pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('Nombre', sql.VarChar, Nombre)
+            .query(`INSERT INTO Categoria_Gasto (Nombre) VALUES (@Nombre)`);
+            
+        res.status(201).json({ message: "¡Categoría creada exitosamente!" });
+    } catch (err) {
+        console.error("Error creando categoría:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener todos los gastos
 app.get('/api/gastos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
-        // Hacemos un JOIN para traer el nombre de la categoría en lugar del número
         let result = await pool.request().query(`
             SELECT 
                 g.Id_Gasto, 
@@ -391,7 +452,7 @@ app.get('/api/gastos', async (req, res) => {
     }
 });
 
-// 3. Registrar un nuevo gasto
+// Registrar un nuevo gasto
 app.post('/api/gastos', async (req, res) => {
     try {
         const { Fecha, Descripcion, Monto, Id_Categoria } = req.body;
@@ -414,88 +475,33 @@ app.post('/api/gastos', async (req, res) => {
     }
 });
 
-// 4. Eliminar un gasto
+// Eliminar un gasto
 app.delete('/api/gastos/:id', async (req, res) => {
     try {
         const { id } = req.params;
         let pool = await sql.connect(dbConfig);
         
-        await pool.request()
+        const result = await pool.request()
             .input('Id_Gasto', sql.Int, id)
             .query(`DELETE FROM Gasto WHERE Id_Gasto = @Id_Gasto`);
-            
-        res.status(200).send("Gasto eliminado correctamente");
-    } catch (error) {
-        console.error("Error al eliminar gasto:", error);
-        res.status(500).send("Error interno al eliminar el gasto");
-    }
-});
-
-// Agregar nueva categoría de gasto
-app.post('/api/categorias-gastos', async (req, res) => {
-    const { Nombre } = req.body;
-    
-    if (!Nombre) {
-        return res.status(400).send("El nombre es obligatorio");
-    }
-
-    try {
-        let pool = await sql.connect(dbConfig);
-        await pool.request().query(`
-            INSERT INTO Categoria_Gasto (Nombre) 
-            VALUES ('${Nombre}')
-        `);
-        res.status(201).json({ message: "¡Categoría creada exitosamente!" });
-    } catch (err) {
-        console.error("Error creando categoría:", err);
-        res.status(500).send("Error interno del servidor");
-    }
-});
-
-// ELIMINAR UN GASTO
-app.delete('/api/gastos/:id', async (req, res) => {
-    const idGasto = req.params.id;
-
-    try {
-        let pool = await sql.connect(dbConfig);
-        
-        // Ejecutamos la consulta para borrar el registro por su ID
-        const result = await pool.request().query(`
-            DELETE FROM Gasto 
-            WHERE Id_Gasto = ${idGasto}
-        `);
 
         if (result.rowsAffected[0] > 0) {
             res.status(200).json({ message: "Gasto eliminado con éxito" });
         } else {
             res.status(404).send("Gasto no encontrado");
         }
-
     } catch (err) {
         console.error("Error al eliminar el gasto:", err);
         res.status(500).send("Error interno del servidor al intentar eliminar");
     }
 });
 
-// ==========================================
-// MÓDULO DE EXTRAS
-// ==========================================
-app.get('/api/extras', async (req, res) => {
-    try {
-        let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query("SELECT * FROM Extra ORDER BY Nombre");
-        res.json(result.recordset);
-    } catch (err) {
-        console.error("Error obteniendo extras:", err);
-        res.status(500).send("Error interno del servidor");
-    }
-});
 
-// ==========================================
-// MÓDULO DE COBROS E INGRESOS
-// ==========================================
+// ==========================================================================
+// 7. RUTAS: INGRESOS & COBROS
+// ==========================================================================
 
-// Obtener todos los ingresos para la tabla (Mejorado para manuales)
+// Obtener todos los ingresos
 app.get('/api/ingresos', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -509,7 +515,6 @@ app.get('/api/ingresos', async (req, res) => {
                 c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
                 s.Nombre AS Nombre_Servicio
             FROM Ingreso i
-            -- Usamos LEFT JOIN para que traiga la plata aunque no tenga turno asignado
             LEFT JOIN Turno t ON i.Id_Turno = t.Id_Turno
             LEFT JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
             LEFT JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -522,11 +527,12 @@ app.get('/api/ingresos', async (req, res) => {
     }
 });
 
-// Registrar un nuevo ingreso manual (Sin turno)
+// Registrar un ingreso manual (Venta mostrador, extras sin turno)
 app.post('/api/ingresos/manual', async (req, res) => {
-    const { Concepto, Monto_Total, Medio_Pago } = req.body;
     try {
+        const { Concepto, Monto_Total, Medio_Pago } = req.body;
         let pool = await sql.connect(dbConfig);
+        
         await pool.request()
             .input('Concepto', sql.VarChar, Concepto)
             .input('Monto_Total', sql.Decimal(10,2), Monto_Total)
@@ -535,6 +541,7 @@ app.post('/api/ingresos/manual', async (req, res) => {
                 INSERT INTO Ingreso (Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado, Concepto)
                 VALUES (GETDATE(), @Monto_Total, @Medio_Pago, 0, @Concepto)
             `);
+            
         res.status(201).json({ message: "Ingreso manual registrado" });
     } catch (err) {
         console.error("Error al registrar ingreso manual:", err);
@@ -542,49 +549,55 @@ app.post('/api/ingresos/manual', async (req, res) => {
     }
 });
 
+// Cobrar un turno completo (El Patovica Financiero)
 app.post('/api/cobrar-turno', async (req, res) => {
-    const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
-    
     try {
+        const { idTurno, montoTotal, medioPago, descuento, extras } = req.body;
         let pool = await sql.connect(dbConfig);
         
-        // 1. EL PATOVICA: Revisamos el estado antes de cobrar
-        const chequeo = await pool.request().query(`
-            SELECT Estado FROM Turno WHERE Id_Turno = ${idTurno}
-        `);
+        // 1. Verificación de seguridad
+        const chequeo = await pool.request()
+            .input('Id_Turno', sql.Int, idTurno)
+            .query(`SELECT Estado FROM Turno WHERE Id_Turno = @Id_Turno`);
         
         if (chequeo.recordset.length === 0) return res.status(404).send("Turno no encontrado");
         if (chequeo.recordset[0].Estado === 'Pagado') {
             return res.status(400).send("¡Ojo! Este turno ya fue cobrado.");
         }
 
+        // Transacción para asegurar que todo se guarde junto
         const transaction = new sql.Transaction(pool);
         await transaction.begin();
         
         try {
-            // 2. Guardar la plata en Ingreso
+            // Guardar ingreso
             const requestIngreso = new sql.Request(transaction);
-            await requestIngreso.query(`
-                INSERT INTO Ingreso (Id_Turno, Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado)
-                VALUES (${idTurno}, GETDATE(), ${montoTotal}, '${medioPago}', ${descuento})
-            `);
+            await requestIngreso
+                .input('Id_Turno', sql.Int, idTurno)
+                .input('Monto_Total', sql.Decimal(12, 2), montoTotal)
+                .input('Medio_Pago', sql.VarChar, medioPago)
+                .input('Descuento', sql.Decimal(12, 2), descuento)
+                .query(`
+                    INSERT INTO Ingreso (Id_Turno, Fecha, Monto_Total, Medio_Pago, Descuento_Aplicado)
+                    VALUES (@Id_Turno, GETDATE(), @Monto_Total, @Medio_Pago, @Descuento)
+                `);
             
-            // 3. Guardar extras en Turno_Extra
+            // Guardar extras
             if (extras && extras.length > 0) {
                 for (let idExtra of extras) {
                     const requestExtra = new sql.Request(transaction);
-                    await requestExtra.query(`
-                        INSERT INTO Turno_Extra (Id_Turno, Id_Extra)
-                        VALUES (${idTurno}, ${idExtra})
-                    `);
+                    await requestExtra
+                        .input('Id_Turno', sql.Int, idTurno)
+                        .input('Id_Extra', sql.Int, idExtra)
+                        .query(`INSERT INTO Turno_Extra (Id_Turno, Id_Extra) VALUES (@Id_Turno, @Id_Extra)`);
                 }
             }
             
-            // 4. MAGIA: Cambiar el estado del turno a "Pagado"
+            // Actualizar estado del turno
             const requestEstado = new sql.Request(transaction);
-            await requestEstado.query(`
-                UPDATE Turno SET Estado = 'Pagado' WHERE Id_Turno = ${idTurno}
-            `);
+            await requestEstado
+                .input('Id_Turno', sql.Int, idTurno)
+                .query(`UPDATE Turno SET Estado = 'Pagado' WHERE Id_Turno = @Id_Turno`);
             
             await transaction.commit();
             res.status(200).json({ message: "¡Cobro registrado exitosamente!" });
@@ -599,37 +612,10 @@ app.post('/api/cobrar-turno', async (req, res) => {
     }
 });
 
-// Actualizar detalles del turno durante la sesión (Ej: Anotar color)
-// Agregar un color/detalle a la sesión
-app.put('/api/turnos/:id/detalles', async (req, res) => {
-    const { id } = req.params;
-    const { Color } = req.body; // Este es el color NUEVO que se agrega
 
-    try {
-        let pool = await sql.connect(dbConfig);
-        await pool.request()
-            .input('Id_Turno', sql.Int, id)
-            .input('NuevoColor', sql.VarChar, Color)
-            .query(`
-                UPDATE Turno 
-                SET Color = CASE 
-                                WHEN Color IS NULL OR Color = '' THEN @NuevoColor 
-                                ELSE Color + ' | ' + @NuevoColor 
-                            END,
-                    Estado = CASE WHEN Estado = 'Pendiente' THEN 'En progreso' ELSE Estado END
-                WHERE Id_Turno = @Id_Turno AND Estado != 'Pagado'
-            `);
-            
-        res.status(200).send("Color agregado a la sesión.");
-    } catch (error) {
-        console.error("Error al guardar detalles:", error);
-        res.status(500).send("Error interno al actualizar el turno");
-    }
-});
-
-// ==========================================
-// 4. LEVANTAR EL SERVIDOR (Siempre al final)
-// ==========================================
+// ==========================================================================
+// 8. INICIO DEL SERVIDOR
+// ==========================================================================
 app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
+    console.log(`Servidor corriendo impecable en http://localhost:${port} 🚀`);
 });
