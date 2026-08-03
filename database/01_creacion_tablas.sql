@@ -137,3 +137,30 @@ ALTER TABLE Ingreso ALTER COLUMN Id_Turno INT NULL;
 
 -- 2. Agregamos una columna para anotar el detalle (Ej: "Gift Card", "Aceite para cutículas")
 ALTER TABLE Ingreso ADD Concepto VARCHAR(150) NULL;
+
+-- 1. Agregamos la columna 'Area' a la tabla Servicio (Si no existe)
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns 
+    WHERE Name = N'Area' AND Object_ID = OBJECT_ID(N'Servicio')
+)
+BEGIN
+    ALTER TABLE Servicio ADD Area VARCHAR(100) NULL;
+END
+GO
+
+-- 2. Creamos la tabla intermedia Empleada_Area para las especialidades
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'Empleada_Area') AND type in (N'U'))
+BEGIN
+    CREATE TABLE Empleada_Area (
+        Id_Empleada INT NOT NULL,
+        Area VARCHAR(100) NOT NULL,
+        CONSTRAINT FK_EmpArea_Empleada FOREIGN KEY (Id_Empleada) REFERENCES Empleada(Id_Empleada)
+    );
+END
+GO
+
+-- Ejemplo rápido para actualizar los servicios que ya tenías:
+UPDATE Servicio SET Area = 'Manicura' WHERE Nombre LIKE '%Kapping%' OR Nombre LIKE '%Manicura%';
+UPDATE Servicio SET Area = 'Cejas y Pestañas' WHERE Nombre LIKE '%Lifting%';
+
+SELECT * FROM Clienta;

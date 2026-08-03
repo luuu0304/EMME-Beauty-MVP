@@ -312,6 +312,32 @@ app.post('/api/turnos', async (req, res) => {
     }
 });
 
+// Obtener empleadas habilitadas según el servicio seleccionado
+app.get('/api/empleadas/servicio/:idServicio', async (req, res) => {
+    const { idServicio } = req.params;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input('Id_Servicio', sql.Int, idServicio)
+            .query(`
+                SELECT 
+                    e.Id_Empleada, 
+                    e.Nombre_Ap AS Nombre, 
+                    '' AS Apellido 
+                FROM Empleada e
+                JOIN Empleada_Area ea ON e.Id_Empleada = ea.Id_Empleada
+                JOIN Servicio s ON ea.Area = s.Area
+                WHERE s.Id_Servicio = @Id_Servicio
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error filtrando empleadas por servicio:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
 // ==========================================
 // MÓDULO DE SERVICIOS
 // ==========================================

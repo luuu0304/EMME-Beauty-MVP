@@ -212,49 +212,100 @@ if (btnCancelarExpress) {
 }
 
 // --- Guardar Turno ---
-async function guardarTurno() {
-    let idClientaFinal;
-
-    if (grupoExpress.style.display === 'block' || grupoExpress.style.display === '') {
-        const nombreExp = inputNombreExpress.value.trim();
-        const apellidoExp = inputApellidoExpress.value.trim();
-        
-        if (!nombreExp || !apellidoExp) {
-            mostrarNotificacion("Por favor, completá nombre y apellido.", "warning");
-            return; 
-        }
-        try {
-        const respuesta = await fetch('http://localhost:3000/api/turnos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nuevoTurno)
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
-            cerrarModalTurno();
-            location.reload();
-        } else {
-            // AHORA LEEMOS EL MENSAJE DEL BACKEND
-            const mensajeError = await respuesta.text();
-            // Mostramos el mensaje exacto que nos devolvió SQL/Node
-            mostrarNotificacion(`Ups: ${mensajeError}`, "error");
-        }
-    } catch (error) {
-        console.error("Error enviando el turno:", error);
-        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+// --- Filtrar Profesionales (La magia de las áreas) ---
+async function filtrarProfesionalesPorServicio() {
+    const idServicio = document.getElementById('servicioTurno').value;
+    const selectEmpleada = document.getElementById('empleadaTurno');
+    
+    // Si deseleccionan el servicio, bloqueamos a la empleada
+    if (!idServicio) {
+        selectEmpleada.innerHTML = '<option value="">Elegí el servicio primero...</option>';
+        selectEmpleada.disabled = true;
+        selectEmpleada.style.backgroundColor = "#f8f9fa";
+        return;
     }
 
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/servicio/${idServicio}`);
+        const empleadasHabilitadas = await respuesta.json();
+        
+        selectEmpleada.innerHTML = '<option value="">Seleccioná a la profesional...</option>';
+        
+        if (empleadasHabilitadas.length === 0) {
+            selectEmpleada.innerHTML = '<option value="">Ninguna profesional habilitada</option>';
+            selectEmpleada.disabled = true;
+            return;
+        }
+
+        empleadasHabilitadas.forEach(emp => {
+            const opcion = document.createElement('option');
+            opcion.value = emp.Id_Empleada;
+            opcion.textContent = `${emp.Nombre} ${emp.Apellido}`;
+            selectEmpleada.appendChild(opcion);
+        });
+        
+        // ¡Habilitamos el select!
+        selectEmpleada.disabled = false;
+        selectEmpleada.style.backgroundColor = "#ffffff";
+        
+    } catch (error) {
+        console.error("Error al buscar profesionales:", error);
+    }
+}
+
+
+// --- Guardar Turno (Bug de clienta Express solucionado) ---
+async function guardarTurno() {
+    let idClientaFinal;
+    const grupoExpress = document.getElementById('grupoClientaExpress');
+
+    // PASO 1: RESOLVER LA CLIENTA (Buscarla o crearla)
+    if (grupoExpress && (grupoExpress.style.display === 'block' || grupoExpress.style.display === '')) {
+        const inputNombreExpress = document.getElementById('inputNombreExpress');
+        const inputApellidoExpress = document.getElementById('inputApellidoExpress');
+        
+        const nombreExp = inputNombreExpress ? inputNombreExpress.value.trim() : '';
+        const apellidoExp = inputApellidoExpress ? inputApellidoExpress.value.trim() : '';
+        
+        if (!nombreExp || !apellidoExp) {
+            mostrarNotificacion("Por favor, completá nombre y apellido de la nueva clienta.", "warning");
+            return; 
+        }
+        
+        try {
+            // Creamos la clienta primero
+            const respuestaClienta = await fetch('http://localhost:3000/api/clientas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Nombre: nombreExp, Apellido: apellidoExp, Telefono: "", Email: "" })
+            });
+
+            if (respuestaClienta.ok) {
+                const dataClienta = await respuestaClienta.json();
+                // Tomamos el ID que nos devuelve la base de datos
+                idClientaFinal = dataClienta.id || dataClienta.Id_Clienta; 
+            } else {
+                mostrarNotificacion("Hubo un error al registrar la clienta nueva.", "error");
+                return;
+            }
+        } catch (error) {
+            console.error("Error creando clienta:", error);
+            mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+            return;
+        }
     } else {
-        idClientaFinal = document.getElementById('selectClientaTurno').value;
+        // Es una clienta existente
+        const selectClienta = document.getElementById('selectClientaTurno');
+        idClientaFinal = selectClienta ? selectClienta.value : null;
         if (!idClientaFinal) {
             mostrarNotificacion("Por favor, seleccioná una clienta de la lista.", "warning");
             return;
         }
     }
 
-    const idEmpleada = document.getElementById('selectEmpleadaTurno').value;
-    const idServicio = document.getElementById('selectServicioTurno').value;
+    // PASO 2: OBTENER Y VALIDAR LOS DATOS DEL TURNO
+    const idServicio = document.getElementById('servicioTurno').value;
+    const idEmpleada = document.getElementById('empleadaTurno').value;
     const fecha = document.getElementById('fechaTurnoInput').value;
     const hora = document.getElementById('horaTurnoInput').value;
 
@@ -263,7 +314,6 @@ async function guardarTurno() {
         return;
     }
 
-    // Validación de horario
     if (hora < "09:30" || hora > "21:30") {
         mostrarNotificacion("Por favor, ingresá un horario dentro de la franja de atención (09:30 a 21:30 hs).", "warning");
         return;
@@ -277,6 +327,7 @@ async function guardarTurno() {
         Fecha_Hora: fechaHoraCompleta
     };
 
+    // PASO 3: GUARDAR EL TURNO DEFINITIVO
     try {
         const respuesta = await fetch('http://localhost:3000/api/turnos', {
             method: 'POST',
@@ -287,9 +338,10 @@ async function guardarTurno() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
             cerrarModalTurno();
-            location.reload();
+            setTimeout(() => { location.reload(); }, 1200);
         } else {
-            mostrarNotificacion("Hubo un error al guardar el turno en el servidor.", "error");
+            const mensajeError = await respuesta.text();
+            mostrarNotificacion(`Error: ${mensajeError}`, "error");
         }
     } catch (error) {
         console.error("Error enviando el turno:", error);
@@ -324,9 +376,10 @@ async function cargarServicios() {
         const respuesta = await fetch('http://localhost:3000/api/servicios');
         const servicios = await respuesta.json();
         
-        const selectServicio = document.getElementById('selectServicioTurno');
+        // ¡Magia arreglada! Ahora busca el ID 'servicioTurno' de tu nuevo HTML
+        const selectServicio = document.getElementById('servicioTurno');
         if (selectServicio) {
-            selectServicio.innerHTML = '<option value="">Seleccione...</option>';
+            selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
             
             servicios.forEach(servicio => {
                 const opcion = document.createElement('option');
