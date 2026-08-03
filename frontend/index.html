@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
-    
     <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -22,6 +21,7 @@
         <div class="menu-item">Gastos</div>
         <div class="menu-item">Ingresos</div>
         <div class="menu-item">Resúmenes</div>
+        <div class="menu-item">Configuración</div>
     </aside>
 
     <main class="main-content">
@@ -121,6 +121,7 @@
             </div>
 
         </div>
+
         <!-- ========================================================================= -->
         <!-- FIN SECCIÓN CLIENTAS                                                      -->
         <!-- ========================================================================= -->
@@ -237,6 +238,231 @@
                     </tfoot>
                 </table>
             </div>
+        </div>
+    <!-- SECCIÓN CONFIGURACIÓN -->
+        <div id="seccionConfiguracion" style="display: none;">
+
+            <div class="config-tabs">
+                <button type="button" class="btn-tab active" data-config-tab="general" onclick="cambiarTabConfig('general')">General</button>
+                <button type="button" class="btn-tab" data-config-tab="whatsapp" onclick="cambiarTabConfig('whatsapp')">WhatsApp</button>
+                <button type="button" class="btn-tab" data-config-tab="servicios" onclick="cambiarTabConfig('servicios')">Servicios</button>
+                <button type="button" class="btn-tab" data-config-tab="agenda" onclick="cambiarTabConfig('agenda')">Horario</button>
+            </div>
+
+            <!-- PANEL: GENERAL -->
+            <div id="configPanelGeneral" class="config-panel config-panel-active">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div>
+                            <h2 class="config-card-title">Datos del local</h2>
+                            <p class="config-card-desc">Información que aparece en recordatorios y mensajes de WhatsApp.</p>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="guardarConfigGeneral()">Guardar cambios</button>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="configNombreLocal">Nombre del salón</label>
+                            <input type="text" id="configNombreLocal" placeholder="EMME Beauty" readonly class="config-input-readonly">
+                        </div>
+                        <div class="form-group">
+                            <label for="configDireccion">Dirección</label>
+                            <input type="text" id="configDireccion" value="" readonly class="config-input-readonly">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="configTelefono">Teléfono de contacto</label>
+                            <input type="tel" id="configTelefono" placeholder="387...">
+                        </div>
+                        <div class="form-group">
+                            <label for="configInstagram">Instagram</label>
+                            <input type="text" id="configInstagram" placeholder="@emme.beauty">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="configDescripcion">Descripción corta (opcional)</label>
+                        <textarea id="configDescripcion" rows="3" placeholder="Salón de uñas y estética en Salta..." class="config-textarea"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: WHATSAPP -->
+            <div id="configPanelWhatsapp" class="config-panel">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div>
+                            <h2 class="config-card-title">Conexión WhatsApp</h2>
+                            <p class="config-card-desc">Estado del bot de recordatorios automáticos.</p>
+                        </div>
+                        <span id="configWaBadge" class="config-badge config-badge--pending">Verificando...</span>
+                    </div>
+                    <div class="config-info-grid">
+                        <div class="config-info-item">
+                            <span class="config-info-label">Perfil vinculado</span>
+                            <span id="configWaPerfil" class="config-info-value">—</span>
+                        </div>
+                        <div class="config-info-item">
+                            <span class="config-info-label">Número</span>
+                            <span id="configWaNumero" class="config-info-value">—</span>
+                        </div>
+                        <div class="config-info-item">
+                            <span class="config-info-label">Base de datos</span>
+                            <span id="configDbEstado" class="config-info-value">—</span>
+                        </div>
+                    </div>
+
+                    <div id="configQrEspera" class="config-qr-estado" style="display: none;">
+                        <span class="config-qr-spinner"></span>
+                        <span id="configQrEsperaTexto">Iniciando conexión...</span>
+                    </div>
+
+                    <div id="configQrContainer" class="config-qr-container" style="display: none;">
+                        <p class="config-card-desc">Escaneá con WhatsApp → <strong>Dispositivos vinculados</strong> → <strong>Vincular dispositivo</strong></p>
+                        <img id="configQrImage" alt="Código QR WhatsApp" class="config-qr-img" style="display: none;">
+                        <p class="config-hint">El código se renueva cada ~60 segundos. Si expira, tocá «Reiniciar conexión».</p>
+                    </div>
+
+                    <div id="configQrConectado" class="config-hint config-hint-block config-qr-ok" style="display: none;">
+                        WhatsApp conectado. Los recordatorios se enviarán automáticamente.
+                    </div>
+
+                    <div class="config-card-actions">
+                        <button type="button" class="btn-secondary" onclick="reiniciarWhatsApp(false)">Reiniciar conexión</button>
+                        <button type="button" class="btn-secondary" onclick="reiniciarWhatsApp(true)">Borrar sesión y reconectar</button>
+                        <button type="button" class="btn-primary" onclick="actualizarEstadoWhatsApp()">Actualizar estado</button>
+                    </div>
+                </div>
+
+                <!-- FUNCIONALIDADES DEL BOT DE WHATSAPP -->
+                 <!-- en esta card vamos a ver todas las funcionalidades del bot de whatsapp y configurar su mensaje de 
+                para cada funcionalidad (Recordatorios tanto de turno como de mantenimiento)-->
+                <div class="config-card">
+                    <h2 class="config-card-title">Recordatorios automáticos</h2>
+                    <p class="config-card-desc">Se envían a las clientas antes de su turno agendado.</p>
+                    <div class="form-row" style="align-items: flex-end;">
+                        <div class="form-group" style="max-width: 220px;">
+                            <label for="configHorasRecordatorio">Enviar recordatorio</label>
+                            <div class="config-inline-field">
+                                <input type="number" id="configHorasRecordatorio" min="1" max="72" value="24">
+                                <span>horas antes del turno</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="config-preview">
+                        <span class="config-preview-label">Vista previa del mensaje</span>
+                        <pre id="configPreviewMensaje" class="config-preview-text">Cargando vista previa...</pre>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <h2 class="config-card-title">Enviar mensaje de prueba</h2>
+                    <p class="config-card-desc">Verificá que WhatsApp puede enviar mensajes correctamente.</p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="configPruebaTelefono">Teléfono (con código de área)</label>
+                            <input type="tel" id="configPruebaTelefono" placeholder="3875123456">
+                        </div>
+                        <div class="form-group">
+                            <label for="configPruebaNombre">Nombre</label>
+                            <input type="text" id="configPruebaNombre" placeholder="Ana">
+                        </div>
+                    </div>
+                    <div class="config-card-actions">
+                        <button type="button" class="btn-primary" onclick="enviarMensajePruebaWhatsApp()">Enviar prueba</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: SERVICIOS -->
+            <div id="configPanelServicios" class="config-panel">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div>
+                            <h2 class="config-card-title">Catálogo de servicios</h2>
+                            <p class="config-card-desc">Servicios disponibles al agendar turnos.</p>
+                        </div>
+                    </div>
+                    <div class="config-table-wrap">
+                        <table class="config-table">
+                            <thead>
+                                <tr>
+                                    <th>Servicio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="configTablaServicios">
+                                <tr><td colspan="1" class="config-table-empty">Cargando servicios...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div>
+                            <h2 class="config-card-title">Extras y adicionales</h2>
+                            <p class="config-card-desc">Opciones disponibles al cobrar un turno.</p>
+                        </div>
+                    </div>
+                    <div class="config-table-wrap">
+                        <table class="config-table">
+                            <thead>
+                                <tr>
+                                    <th>Extra</th>
+                                    <th style="text-align: right;">Precio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="configTablaExtras">
+                                <tr><td colspan="2" class="config-table-empty">Cargando extras...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: Horaios -->
+            <div id="configPanelAgenda" class="config-panel">
+                <div class="config-card">
+                    <div class="config-card-header">
+                        <div>
+                            <h2 class="config-card-title">Horario de atención</h2>
+                            <p class="config-card-desc">Franja horaria y bloques de la agenda diaria.</p>
+                        </div>
+                        <button type="button" class="btn-primary" onclick="guardarConfigAgenda()">Guardar cambios</button>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="configApertura">Apertura</label>
+                            <input type="time" id="configApertura" value="09:30">
+                        </div>
+                        <div class="form-group">
+                            <label for="configCierre">Cierre</label>
+                            <input type="time" id="configCierre" value="21:30">
+                        </div>
+                        <div class="form-group">
+                            <label for="configBloque">Duración de bloque</label>
+                            <select id="configBloque">
+                                <option value="15">15 minutos</option>
+                                <option value="30" selected>30 minutos</option>
+                                <option value="60">60 minutos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Días laborables</label>
+                        <div class="config-dias" id="configDiasLaborables">
+                            <button type="button" class="config-dia active" data-dia="1">Lun</button>
+                            <button type="button" class="config-dia active" data-dia="2">Mar</button>
+                            <button type="button" class="config-dia active" data-dia="3">Mié</button>
+                            <button type="button" class="config-dia active" data-dia="4">Jue</button>
+                            <button type="button" class="config-dia active" data-dia="5">Vie</button>
+                            <button type="button" class="config-dia active" data-dia="6">Sáb</button>
+                            <button type="button" class="config-dia" data-dia="0">Dom</button>
+                        </div>
+                    </div>
+                    <p class="config-hint config-hint-block">Los cambios de horario se guardan como preferencia local. La grilla actual usa 09:00–20:00 con bloques de 30 min.</p>
+                </div>
+            </div>
+
         </div>
     </main>
 
