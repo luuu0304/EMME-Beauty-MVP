@@ -1,9 +1,12 @@
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
 const express = require('express');
 const cors = require('cors');
 const sql = require('mssql');
 
 const app = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 
 // ==========================================
 // 1. MIDDLEWARES
@@ -15,14 +18,15 @@ app.use(express.json());
 // 2. CONFIGURACIÓN DE LA BASE DE DATOS
 // ==========================================
 const dbConfig = {
-    user: 'sa',
-    password: 'TThmA4bmPfPUk*',
-    server: 'localhost', 
-    database: 'EmmE_Beauty',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    port: Number(process.env.DB_PORT) || 1433,
+    database: process.env.DB_NAME,
     options: {
-        encrypt: true,
-        trustServerCertificate: true, // Fundamental para Mac/Docker
-        useUTC: false // Fix de Zona Horaria: guarda la hora exacta sin sumar de más
+        encrypt: process.env.DB_ENCRYPT !== 'false',
+        trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+        useUTC: process.env.DB_USE_UTC === 'true'
     }
 };
 

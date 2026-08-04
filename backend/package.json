@@ -4,6 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "db:up": "docker compose -f ../docker-compose.yml up -d",
+    "db:down": "docker compose -f ../docker-compose.yml down",
+    "db:init": "bash ../scripts/init-db.sh",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
