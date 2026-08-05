@@ -41,6 +41,7 @@
             <h1>Gestión de Turnos</h1>
             <div class="header-actions">
                 <input type="text" id="buscadorClientas" placeholder="Buscar clienta..." style="display: none;">
+                <input type="text" id="buscadorEmpleadas" placeholder="Buscar profesional..." style="display: none; padding: 10px 16px; font-size: 14px; border: 1px solid #e0e0e0; border-radius: 8px; outline: none;">
                 <button class="btn-primary" id="btnNuevaClienta" onclick="prepararNuevaClienta()" style="display: none;">+ Nueva Clienta</button>
                 <button class="btn-primary" id="btnNuevoTurno" onclick="abrirModalTurno()">+ Nuevo Turno</button>
                 <button class="btn-primary" id="btnNuevaEmpleada" onclick="prepararNuevaEmpleada()" style="display: none;">+ Nueva Empleada</button>
@@ -482,6 +483,58 @@
         </div>
     </div>
 
+    <!-- Modal Detalle Sueldo -->
+    <div class="modal-overlay" id="modalDetalleSueldo">
+        <div class="modal-content" style="width: 90%; max-width: 900px;">
+            <div class="modal-header">
+                <h2 id="tituloModalDetalleSueldo">Detalle de Comisiones</h2>
+            </div>
+            
+            <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #eee; border-radius: 8px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #f8f9fa; border-bottom: 2px solid #ddd;">
+                            <th style="padding: 12px 15px;">Fecha</th>
+                            <th style="padding: 12px 15px;">Clienta</th>
+                            <th style="padding: 12px 15px;">Servicio</th>
+                            <th style="padding: 12px 15px; text-align: right;">Abonado</th>
+                            <th style="padding: 12px 15px; text-align: center;">%</th>
+                            <th style="padding: 12px 15px; text-align: right;">Comisión</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDetalleSueldoBody">
+                        <!-- JS inyecta los datos acá -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModalDetalleSueldo()">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configurar Especialidades -->
+    <div class="modal-overlay" id="modalEspecialidades">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="tituloModalEspecialidades">Áreas y Comisiones</h2>
+            </div>
+            <input type="hidden" id="idEspecialidadOculto">
+            
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Seleccione las áreas que trabaja esta profesional y asigne su porcentaje correspondiente (Ej: 0.50 para el 50%).</p>
+            
+            <!-- Lista dinámica -->
+            <div id="contenedorListaAreas" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px;">
+                <!-- JS inyectará los checkboxes acá -->
+            </div>
+
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="cerrarModalEspecialidades()">Cancelar</button>
+                <button class="btn-primary" onclick="guardarEspecialidades()">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
     <!-- =========================================================================
          5. COMPONENTES GLOBALES (Toasts, Scripts)
          ========================================================================= -->

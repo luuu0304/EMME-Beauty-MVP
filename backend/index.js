@@ -146,14 +146,52 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
 // 3. RUTAS: EMPLEADAS
 // ==========================================================================
 
-// Obtener todas las empleadas
+// Obtener todas las empleadas con su saldo acumulado y la info de su última liquidación
 app.get('/api/empleadas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
-        let result = await pool.request().query("SELECT * FROM Empleada");
+        
+        let result = await pool.request().query(`
+            SELECT 
+                e.Id_Empleada,
+                e.Nombre_Ap,
+                e.DNI,
+                e.Telefono,
+                ISNULL(Saldo.Saldo_Acumulado, 0) AS Saldo_Acumulado,
+                UltimaLiq.Fecha_Pago AS Ultima_Fecha_Liq,
+                UltimaLiq.Monto_Abonado AS Ultimo_Monto_Liq
+            FROM Empleada e
+            
+            -- 1. Subconsulta para el saldo acumulado actual
+            LEFT JOIN (
+                SELECT 
+                    t.Id_Empleada, 
+                    SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS Saldo_Acumulado
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                LEFT JOIN (
+                    SELECT Id_Turno, SUM(Precio) as Total_Extras
+                    FROM Turno_Extra te
+                    JOIN Extra ex ON te.Id_Extra = ex.Id_Extra
+                    GROUP BY Id_Turno
+                ) Extras ON t.Id_Turno = Extras.Id_Turno
+                WHERE t.Estado = 'Pagado' AND t.Liquidado = 0
+                GROUP BY t.Id_Empleada
+            ) Saldo ON e.Id_Empleada = Saldo.Id_Empleada
+            
+            -- 2. Subconsulta para buscar el último recibo emitido
+            OUTER APPLY (
+                SELECT TOP 1 Fecha_Pago, Monto_Abonado
+                FROM Liquidacion_Sueldo ls
+                WHERE ls.Id_Empleada = e.Id_Empleada
+                ORDER BY Fecha_Pago DESC
+            ) UltimaLiq
+        `);
+        
         res.json(result.recordset);
     } catch (err) {
-        console.error("Error trayendo empleadas: ", err);
+        console.error("Error trayendo empleadas y saldos: ", err);
         res.status(500).send("Error conectando a la base de datos");
     }
 });
@@ -239,6 +277,188 @@ app.delete('/api/empleadas/:id', async (req, res) => {
     } catch (error) {
         console.error("Error al eliminar empleada:", error);
         res.status(500).send("Error interno al eliminar la empleada");
+    }
+});
+
+// Obtener el detalle de los turnos pendientes de cobro para una empleada
+app.get('/api/empleadas/:id/sueldo-detalle', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        
+        let result = await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .query(`
+                SELECT 
+                    t.Id_Turno,
+                    t.Fecha_Hora,
+                    c.Nombre + ' ' + c.Apellido AS Nombre_Clienta,
+                    s.Nombre AS Nombre_Servicio,
+                    (s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) AS Total_Abonado,
+                    ISNULL(ea.Porcentaje_Comision, 0.50) AS Porcentaje_Comision,
+                    ((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)) AS A_Cobrar
+                FROM Turno t
+                JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                LEFT JOIN (
+                    SELECT Id_Turno, SUM(Precio) as Total_Extras
+                    FROM Turno_Extra te
+                    JOIN Extra ex ON te.Id_Extra = ex.Id_Extra
+                    GROUP BY Id_Turno
+                ) Extras ON t.Id_Turno = Extras.Id_Turno
+                WHERE t.Id_Empleada = @Id_Empleada 
+                  AND t.Estado = 'Pagado' 
+                  AND t.Liquidado = 0
+                ORDER BY t.Fecha_Hora DESC
+            `);
+            
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error trayendo detalle de sueldo: ", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Liquidar el sueldo pendiente de una empleada
+app.post('/api/empleadas/:id/liquidar', async (req, res) => {
+    const { id } = req.params;
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        
+        try {
+            // 1. Calcular cuánto se le debe exactamente en este momento para evitar errores
+            const requestCalc = new sql.Request(transaction);
+            const resultCalc = await requestCalc
+                .input('Id_Empleada', sql.Int, id)
+                .query(`
+                    SELECT 
+                        ISNULL(SUM((s.Precio_Base + ISNULL(Extras.Total_Extras, 0)) * ISNULL(ea.Porcentaje_Comision, 0.50)), 0) AS Monto_A_Pagar
+                    FROM Turno t
+                    JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                    LEFT JOIN Empleada_Area ea ON t.Id_Empleada = ea.Id_Empleada AND s.Area = ea.Area
+                    LEFT JOIN (
+                        SELECT Id_Turno, SUM(Precio) as Total_Extras
+                        FROM Turno_Extra te
+                        JOIN Extra ex ON te.Id_Extra = ex.Id_Extra
+                        GROUP BY Id_Turno
+                    ) Extras ON t.Id_Turno = Extras.Id_Turno
+                    WHERE t.Id_Empleada = @Id_Empleada AND t.Estado = 'Pagado' AND t.Liquidado = 0
+                `);
+            
+            const montoTotal = resultCalc.recordset[0].Monto_A_Pagar;
+            
+            if (montoTotal <= 0) {
+                await transaction.rollback();
+                return res.status(400).send("No hay saldo pendiente para liquidar.");
+            }
+
+            // 2. Crear el recibo en Liquidacion_Sueldo
+            const requestLiq = new sql.Request(transaction);
+            const resultLiq = await requestLiq
+                .input('Id_Empleada', sql.Int, id)
+                .input('Monto', sql.Decimal(12, 2), montoTotal)
+                .query(`
+                    INSERT INTO Liquidacion_Sueldo (Id_Empleada, Monto_Abonado)
+                    OUTPUT inserted.Id_Liquidacion
+                    VALUES (@Id_Empleada, @Monto)
+                `);
+                
+            const idLiquidacion = resultLiq.recordset[0].Id_Liquidacion;
+            
+            // 3. Marcar los turnos como liquidados
+            const requestUpdate = new sql.Request(transaction);
+            await requestUpdate
+                .input('Id_Empleada', sql.Int, id)
+                .input('Id_Liquidacion', sql.Int, idLiquidacion)
+                .query(`
+                    UPDATE Turno 
+                    SET Liquidado = 1, Id_Liquidacion = @Id_Liquidacion 
+                    WHERE Id_Empleada = @Id_Empleada 
+                      AND Estado = 'Pagado' 
+                      AND Liquidado = 0
+                `);
+                
+            await transaction.commit();
+            res.status(200).json({ message: "Sueldo liquidado con éxito" });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error("Error al liquidar sueldo:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Gestión de ÁREAS Y COMISONES
+
+// Obtener todas las áreas únicas que existen en la tabla Servicio
+app.get('/api/areas', async (req, res) => {
+    try {
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request().query("SELECT DISTINCT Area FROM Servicio WHERE Area IS NOT NULL");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo áreas:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener las áreas y comisiones asignadas a una empleada específica
+app.get('/api/empleadas/:id/areas', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let pool = await sql.connect(dbConfig);
+        let result = await pool.request()
+            .input('Id_Empleada', sql.Int, id)
+            .query("SELECT Area, Porcentaje_Comision FROM Empleada_Area WHERE Id_Empleada = @Id_Empleada");
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error obteniendo áreas de la empleada:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Guardar la nueva configuración de áreas y comisiones
+app.post('/api/empleadas/:id/areas', async (req, res) => {
+    const { id } = req.params;
+    const { areas } = req.body; // Recibe un array ej: [{ area: 'Manicura', comision: 0.50 }]
+
+    try {
+        let pool = await sql.connect(dbConfig);
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 1. Limpiamos las áreas anteriores de esta empleada
+            await new sql.Request(transaction)
+                .input('Id_Empleada', sql.Int, id)
+                .query("DELETE FROM Empleada_Area WHERE Id_Empleada = @Id_Empleada");
+
+            // 2. Insertamos las nuevas áreas con sus porcentajes
+            if (areas && areas.length > 0) {
+                for (let item of areas) {
+                    await new sql.Request(transaction)
+                        .input('Id_Empleada', sql.Int, id)
+                        .input('Area', sql.VarChar, item.area)
+                        .input('Comision', sql.Decimal(3,2), item.comision)
+                        .query("INSERT INTO Empleada_Area (Id_Empleada, Area, Porcentaje_Comision) VALUES (@Id_Empleada, @Area, @Comision)");
+                }
+            }
+
+            await transaction.commit();
+            res.status(200).send("Configuración guardada correctamente");
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error("Error guardando áreas:", err);
+        res.status(500).send("Error interno del servidor");
     }
 });
 

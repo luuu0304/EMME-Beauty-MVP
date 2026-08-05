@@ -43,6 +43,16 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarExtrasDisponibles();
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
+    
+    // Leer el anotador al arrancar
+    const seccionGuardada = localStorage.getItem('emme_seccion_activa');
+    if (seccionGuardada) {
+        // Buscamos el botón que tenga ese mismo texto y le hacemos un "clic fantasma"
+        const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
+        if (botonSeleccionado) {
+            botonSeleccionado.click();
+        }
+    }
 });
 
 // Sistema de Confirmación Personalizado (Promesa)
@@ -70,7 +80,7 @@ function pedirConfirmacion(mensaje) {
 
 
 // ==========================================================================
-// 2. NAVEGACIÓN Y MENÚ LATERAL
+// 2. NAVEGACIÓN, MENÚ LATERAL Y PERSISTENCIA DE ESTADO
 // ==========================================================================
 
 const botonesMenu = document.querySelectorAll('.menu-item');
@@ -84,9 +94,11 @@ const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
 const btnNuevaClienta = document.getElementById('btnNuevaClienta');
 const buscadorClientas = document.getElementById('buscadorClientas');
+const buscadorEmpleadas = document.getElementById('buscadorEmpleadas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
 const btnNuevoGasto = document.getElementById('btnNuevoGasto');
 
+// Función principal del menú
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
         botonesMenu.forEach(b => b.classList.remove('active'));
@@ -103,8 +115,14 @@ botonesMenu.forEach(boton => {
         btnNuevaEmpleada.style.display = 'none';
         btnNuevoGasto.style.display = 'none';
         buscadorClientas.style.display = 'none';
+        
+        // CORRECCIÓN: Ahora sí se oculta al cambiar de sección
+        if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
 
         const opcionSeleccionada = boton.textContent.trim();
+
+        // 🧠 MAGIA DE LA MASTER CLASS: Guardamos dónde hizo clic el usuario
+        localStorage.setItem('emme_seccion_activa', opcionSeleccionada);
 
         if (opcionSeleccionada === 'Turnos') {
             seccionTurnos.style.display = 'block';
@@ -122,6 +140,7 @@ botonesMenu.forEach(boton => {
             seccionEmpleados.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Empleados';
             btnNuevaEmpleada.style.display = 'block'; 
+            if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'block';
             cargarEmpleadas();
 
         } else if (opcionSeleccionada === 'Gastos') {
@@ -138,6 +157,22 @@ botonesMenu.forEach(boton => {
     });
 });
 
+// Lógica del buscador de empleadas
+if (buscadorEmpleadas) {
+    buscadorEmpleadas.addEventListener('input', function(e) {
+        const textoBuscado = e.target.value.toLowerCase();
+        const tarjetas = document.querySelectorAll('#contenedorEmpleadas .card');
+        
+        tarjetas.forEach(tarjeta => {
+            const nombre = tarjeta.querySelector('h3').textContent.toLowerCase();
+            if (nombre.includes(textoBuscado)) {
+                tarjeta.style.display = '';
+            } else {
+                tarjeta.style.display = 'none';
+            }
+        });
+    });
+}
 
 // ==========================================================================
 // 3. MÓDULO DE TURNOS Y CALENDARIO
@@ -944,9 +979,22 @@ async function cargarEmpleadas() {
         contenedor.innerHTML = '';
         
         empleadas.forEach(empleada => {
+            // Definimos las iniciales y el DNI
             const inicial = empleada.Nombre_Ap[0].toUpperCase();
             const dniText = empleada.DNI || empleada.dni || '-';
 
+            // Armamos el textito de la última liquidación
+            let infoUltimaLiq = '<span style="font-size: 12px; color: #aaa; font-style: italic;">Sin pagos previos registrados</span>';
+            
+            if (empleada.Ultima_Fecha_Liq) {
+                const fechaObj = new Date(empleada.Ultima_Fecha_Liq);
+                const fechaLimpia = fechaObj.toLocaleDateString('es-AR');
+                const montoLimpio = empleada.Ultimo_Monto_Liq.toLocaleString('es-AR');
+                
+                infoUltimaLiq = `<span style="font-size: 12px; color: #666; font-weight: 500;">Última liq: <strong>$${montoLimpio}</strong> el ${fechaLimpia}</span>`;
+            }
+
+            // Armamos la tarjeta integrando el nuevo dato
             const tarjetaHTML = `
                 <div class="card">
                     <div class="card-header">
@@ -956,9 +1004,29 @@ async function cargarEmpleadas() {
                             <span>DNI: ${dniText}</span>
                         </div>
                     </div>
-                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')">✏️ Editar</button>
-                        <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">🗑️ Dar de baja</button>
+                    
+                    <div style="background-color: #f8f9fa; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-top: 15px; text-align: center;">
+                        <span style="font-size: 13px; color: #666; display: block; margin-bottom: 5px;">Saldo Acumulado</span>
+                        
+                        <strong style="font-size: 26px; color: #28a745; display: block; margin-bottom: 5px;">
+                            $${empleada.Saldo_Acumulado.toLocaleString('es-AR')}
+                        </strong>
+                        
+                        <!-- ACÁ APARECE LA INFO DE LA ÚLTIMA LIQUIDACIÓN -->
+                        <div style="margin-bottom: 15px; border-top: 1px dashed #ddd; padding-top: 8px;">
+                            ${infoUltimaLiq}
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button class="btn-icon" style="background-color: #28a745; color: white; border: none; font-weight: bold; padding: 6px 12px;" onclick="liquidarSueldo(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Liquidar</button>
+                            <button class="btn-icon" onclick="verDetalleSueldo(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Detalle</button>
+                        </div>
+                    </div>
+
+                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center;">
+                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')"> Editar</button>
+                        <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">Dar de baja</button>
+                        <button class="btn-icon" onclick="abrirModalEspecialidades(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Configurar Áreas</button>
                     </div>
                 </div>
             `;
@@ -991,6 +1059,185 @@ async function eliminarEmpleada(id) {
     }
 }
 
+// --- Modal de Detalle de Sueldo ---
+function cerrarModalDetalleSueldo() {
+    const modal = document.getElementById('modalDetalleSueldo');
+    if (modal) modal.classList.remove('active');
+}
+
+// Visualizar qué compone el saldo a favor
+async function verDetalleSueldo(idEmpleada, nombre) {
+    document.getElementById('tituloModalDetalleSueldo').textContent = `Detalle de ${nombre}`;
+    const tbody = document.getElementById('tablaDetalleSueldoBody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">Cargando historial...</td></tr>';
+    
+    const modal = document.getElementById('modalDetalleSueldo');
+    if (modal) modal.classList.add('active');
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/sueldo-detalle`);
+        const detalles = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (detalles.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">No hay comisiones pendientes de cobro.</td></tr>';
+            return;
+        }
+        
+        detalles.forEach(d => {
+            const fechaObj = new Date(d.Fecha_Hora);
+            const fechaLimpia = fechaObj.toLocaleDateString('es-AR') + ' ' + fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">${fechaLimpia}</td>
+                    <td style="padding: 10px; font-weight: 500;">${d.Nombre_Clienta}</td>
+                    <td style="padding: 10px; color: #555;">${d.Nombre_Servicio}</td>
+                    <td style="padding: 10px; text-align: right;">$${d.Total_Abonado.toLocaleString('es-AR')}</td>
+                    <td style="padding: 10px; text-align: center; color: var(--mostaza); font-weight: bold;">${d.Porcentaje_Comision * 100}%</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold; color: #28a745;">$${d.A_Cobrar.toLocaleString('es-AR')}</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: #d9534f; padding: 20px;">Error al cargar los datos.</td></tr>';
+    }
+}
+
+// Vaciar la caja y registrar el pago
+async function liquidarSueldo(idEmpleada, nombre) {
+    const confirmacion = await pedirConfirmacion(`¿Confirmás la liquidación del sueldo pendiente para ${nombre}? Esta acción dejará su caja en cero.`);
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidar`, { 
+            method: 'POST' 
+        });
+        
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Sueldo liquidado con éxito!", "success");
+            cargarEmpleadas(); 
+        } else {
+            mostrarNotificacion("Error al liquidar el sueldo o la caja ya estaba en cero.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+// --- Modal de Especialidades y Comisiones ---
+function cerrarModalEspecialidades() {
+    const modal = document.getElementById('modalEspecialidades');
+    if (modal) modal.classList.remove('active');
+}
+
+async function abrirModalEspecialidades(idEmpleada, nombre) {
+    document.getElementById('idEspecialidadOculto').value = idEmpleada;
+    document.getElementById('tituloModalEspecialidades').textContent = `Áreas de ${nombre}`;
+    
+    const contenedor = document.getElementById('contenedorListaAreas');
+    contenedor.innerHTML = '<p style="text-align:center; color:#888;">Cargando áreas...</p>';
+    
+    const modal = document.getElementById('modalEspecialidades');
+    if (modal) modal.classList.add('active');
+
+    try {
+        const resAreas = await fetch('http://localhost:3000/api/areas');
+        const areasDisponibles = await resAreas.json();
+        
+        const resAsignadas = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`);
+        const areasAsignadas = await resAsignadas.json();
+        
+        contenedor.innerHTML = '';
+        
+        if(areasDisponibles.length === 0) {
+            contenedor.innerHTML = '<p style="text-align:center; color:#888;">No hay áreas registradas en los servicios.</p>';
+            return;
+        }
+
+        areasDisponibles.forEach(areaObj => {
+            const nombreArea = areaObj.Area;
+            const asignada = areasAsignadas.find(a => a.Area === nombreArea);
+            
+            const estaChequeado = asignada ? 'checked' : '';
+            const comisionValor = asignada ? asignada.Porcentaje_Comision : '0.50'; 
+
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'space-between';
+            div.style.padding = '10px';
+            div.style.borderBottom = '1px solid #f9f9f9';
+
+            div.innerHTML = `
+                <label style="display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer;">
+                    <input type="checkbox" class="check-area" value="${nombreArea}" ${estaChequeado}>
+                    ${nombreArea}
+                </label>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <span style="font-size:12px; color:#666;">Comisión:</span>
+                    <input type="number" step="0.05" min="0" max="1" class="input-comision" data-area="${nombreArea}" value="${comisionValor}" style="width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;" ${estaChequeado ? '' : 'disabled'}>
+                </div>
+            `;
+            contenedor.appendChild(div);
+        });
+
+        // Activar o desactivar el porcentaje si tildan la casilla
+        const checkboxes = contenedor.querySelectorAll('.check-area');
+        checkboxes.forEach(chk => {
+            chk.addEventListener('change', function() {
+                const inputRelacionado = contenedor.querySelector(`.input-comision[data-area="${this.value}"]`);
+                if (inputRelacionado) {
+                    inputRelacionado.disabled = !this.checked;
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error(error);
+        contenedor.innerHTML = '<p style="text-align:center; color:#d9534f;">Error al cargar la información.</p>';
+    }
+}
+
+async function guardarEspecialidades() {
+    const idEmpleada = document.getElementById('idEspecialidadOculto').value;
+    const contenedor = document.getElementById('contenedorListaAreas');
+    
+    const checkboxes = contenedor.querySelectorAll('.check-area:checked');
+    const areasParaGuardar = [];
+
+    checkboxes.forEach(chk => {
+        const nombreArea = chk.value;
+        const inputComision = contenedor.querySelector(`.input-comision[data-area="${nombreArea}"]`);
+        const valorComision = inputComision ? parseFloat(inputComision.value) : 0.50;
+        
+        areasParaGuardar.push({
+            area: nombreArea,
+            comision: valorComision
+        });
+    });
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ areas: areasParaGuardar })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Áreas actualizadas correctamente.", "success");
+            cerrarModalEspecialidades();
+        } else {
+            mostrarNotificacion("Error al guardar la configuración.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
 
 // ==========================================================================
 // 6. MÓDULO DE GASTOS

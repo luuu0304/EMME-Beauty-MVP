@@ -164,3 +164,26 @@ UPDATE Servicio SET Area = 'Manicura' WHERE Nombre LIKE '%Kapping%' OR Nombre LI
 UPDATE Servicio SET Area = 'Cejas y Pestañas' WHERE Nombre LIKE '%Lifting%';
 
 SELECT * FROM Clienta;
+
+USE EmmE_Beauty;
+GO
+
+-- 1. Le agregamos el porcentaje a las especialidades
+ALTER TABLE Empleada_Area ADD Porcentaje_Comision DECIMAL(3,2) DEFAULT 0.50;
+GO
+
+-- 2. Creamos la tabla de Recibos/Liquidaciones
+CREATE TABLE Liquidacion_Sueldo (
+    Id_Liquidacion INT IDENTITY(1,1) PRIMARY KEY,
+    Id_Empleada INT NOT NULL,
+    Fecha_Pago DATETIME DEFAULT GETDATE(),
+    Monto_Abonado DECIMAL(12, 2) NOT NULL,
+    CONSTRAINT FK_Liq_Empleada FOREIGN KEY (Id_Empleada) REFERENCES Empleada(Id_Empleada)
+);
+GO
+
+-- 3. Le agregamos el control de pago al Turno
+ALTER TABLE Turno ADD Liquidado BIT DEFAULT 0;
+ALTER TABLE Turno ADD Id_Liquidacion INT NULL;
+ALTER TABLE Turno ADD CONSTRAINT FK_Turno_Liquidacion FOREIGN KEY (Id_Liquidacion) REFERENCES Liquidacion_Sueldo(Id_Liquidacion);
+GO
