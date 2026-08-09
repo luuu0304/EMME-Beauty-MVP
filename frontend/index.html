@@ -8,6 +8,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Flatpickr (Calendario de Rango) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+    <!-- Chart.js (Para los gráficos) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -213,6 +221,103 @@
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             3.6. SECCIÓN: RESÚMENES (DASHBOARD)
+             ========================================================================= -->
+        <div id="seccionResumenes" style="display: none;">
+            
+            <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <div>
+                    <h2>Panel de Control</h2>
+                    <p style="color: #666; font-size: 14px;">Métricas y rendimiento financiero del local</p>
+                </div>
+
+                <!-- FILTRO DE FECHAS (Estilo Opción A) -->
+                <div style="background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: center; border: 1px solid #eee;">
+                    <select id="filtroRapidoDash" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px; outline: none; font-weight: 500; cursor: pointer;">
+                        <option value="este_mes" selected>Este mes</option>
+                        <option value="ultimo_mes">Último mes</option>
+                        <option value="ultimos_7_dias">Últimos 7 días</option>
+                        <option value="hoy">Hoy</option>
+                        <option value="personalizado">Rango personalizado...</option>
+                    </select>
+
+                    <!-- Filtro Flatpickr -->
+                    <input type="text" id="rangoFechasCustomDash" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; color: #555; width: 220px; font-family: inherit;">
+                </div>
+            </div>
+
+            <!-- TARJETAS SUPERIORES (KPIs) -->
+            <div class="cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 30px;">
+                
+                <!-- Ingresos Brutos -->
+                <div class="card" style="border-left: 4px solid #17a2b8;">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Ingresos Brutos</span>
+                    <h3 id="dashIngresos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Turnos, señas y extras</p>
+                </div>
+
+                <!-- Gastos Operativos -->
+                <div class="card" style="border-left: 4px solid #dc3545;">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Gastos del Local</span>
+                    <h3 id="dashGastos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Insumos y pagos generales</p>
+                </div>
+
+                <!-- Sueldos / Comisiones -->
+                <div class="card" style="border-left: 4px solid var(--mostaza);">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Comisiones (Profesionales)</span>
+                    <h3 id="dashSueldos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Total acreditado a empleadas</p>
+                </div>
+
+                <!-- Ganancia Neta -->
+                <div class="card" style="background-color: #28a745; color: white; border: none; box-shadow: 0 4px 15px rgba(40,167,69,0.2);">
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.9;">Ganancia Neta</span>
+                    <h3 id="dashGanancia" style="font-size: 28px; margin: 10px 0; color: white;">$0</h3>
+                    <p style="font-size: 12px; margin: 0; opacity: 0.9;">Lo que queda limpio para el local</p>
+                </div>
+
+            </div>
+
+            <!-- ÁREA CENTRAL: GRÁFICOS Y RANKINGS -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+                
+                <!-- COLUMNA IZQUIERDA (LOS DOS GRÁFICOS) -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- Gráfico 1: Ingresos -->
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Ingresos diarios</h3>
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="graficoIngresos"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Turnos -->
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Movimiento de Turnos</h3>
+                        <div style="position: relative; height: 200px; width: 100%;">
+                            <canvas id="graficoTurnos"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- COLUMNA DERECHA (RANKINGS) -->
+                <div style="display: flex; flex-direction: column; gap: 30px;">
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Servicios Estrella (Top 5)</h3>
+                        
+                        <!-- NUEVO LIENZO PARA EL GRÁFICO HORIZONTAL -->
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="graficoServicios"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
             </div>
         </div>
     </main>

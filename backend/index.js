@@ -14,7 +14,8 @@ const port = 3000;
 // 5. RUTAS: TURNOS & AGENDA
 // 6. RUTAS: GASTOS & CATEGORÍAS
 // 7. RUTAS: INGRESOS & COBROS
-// 8. INICIO DEL SERVIDOR
+// 8. RUTAS: DASHBOARD Y RESÚMENES
+// 9. INICIO DEL SERVIDOR
 // ==========================================================================
 
 
@@ -832,10 +833,137 @@ app.post('/api/cobrar-turno', async (req, res) => {
     }
 });
 
+// ==========================================================================
+// 8. RUTAS: DASHBOARD Y RESÚMENES
+// ==========================================================================
+app.get('/api/dashboard/kpis', async (req, res) => {
+    const { desde, hasta } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+
+        // Armamos los filtros de fecha. Agregamos la hora al 'hasta' para incluir todo ese día completo
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+
+        const query = `
+            -- 1. Total Ingresos
+            DECLARE @TotalIngresos DECIMAL(12,2) = (
+                SELECT ISNULL(SUM(Monto_Total), 0) FROM Ingreso
+                WHERE Fecha >= @Desde AND Fecha <= @Hasta
+            );
+
+            -- 2. Total Gastos
+            DECLARE @TotalGastos DECIMAL(12,2) = (
+                SELECT ISNULL(SUM(Monto), 0) FROM Gasto
+                WHERE Fecha >= @Desde AND Fecha <= @Hasta
+            );
+
+            -- 3. Total Sueldos (Comisiones liquidadas)
+            DECLARE @TotalSueldos DECIMAL(12,2) = (
+                SELECT ISNULL(SUM(Monto_Abonado), 0) FROM Liquidacion_Sueldo
+                WHERE Fecha_Pago >= @Desde AND Fecha_Pago <= @Hasta
+            );
+
+            -- Devolvemos las 4 métricas juntas
+            SELECT 
+                @TotalIngresos AS Ingresos,
+                @TotalGastos AS Gastos,
+                @TotalSueldos AS Sueldos,
+                (@TotalIngresos - @TotalGastos - @TotalSueldos) AS GananciaNeta;
+        `;
+
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .query(query);
+
+        res.json(result.recordset[0]);
+    } catch (err) {
+        console.error("Error cargando KPIs del dashboard:", err);
+        res.status(500).send("Error interno del servidor");
+    }
+});
+
+// Obtener ingresos y cantidad de turnos agrupados por día
+app.get('/api/dashboard/grafico-ingresos', async (req, res) => {
+    const { desde, hasta } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+
+        const query = `
+            WITH IngresosDiarios AS (
+                SELECT CAST(Fecha AS DATE) as FechaDia, SUM(Monto_Total) as Total
+                FROM Ingreso
+                WHERE Fecha >= @Desde AND Fecha <= @Hasta
+                GROUP BY CAST(Fecha AS DATE)
+            ),
+            TurnosDiarios AS (
+                SELECT CAST(Fecha_Hora AS DATE) as FechaDia, COUNT(Id_Turno) as Cantidad
+                FROM Turno
+                WHERE Fecha_Hora >= @Desde AND Fecha_Hora <= @Hasta
+                GROUP BY CAST(Fecha_Hora AS DATE)
+            )
+            SELECT 
+                CONVERT(VARCHAR(5), ISNULL(i.FechaDia, t.FechaDia), 103) as Dia,
+                CONVERT(VARCHAR(10), ISNULL(i.FechaDia, t.FechaDia), 23) as FechaCompleta, -- NUEVO: Fecha en formato YYYY-MM-DD
+                ISNULL(i.Total, 0) as Total,
+                ISNULL(t.Cantidad, 0) as Turnos
+            FROM IngresosDiarios i
+            FULL OUTER JOIN TurnosDiarios t ON i.FechaDia = t.FechaDia
+            ORDER BY ISNULL(i.FechaDia, t.FechaDia) ASC
+        `;
+
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .query(query);
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error cargando datos del gráfico:", err);
+        res.status(500).json({ error: "Error interno del servidor" });
+    }
+});
+
+// Obtener el Top 5 de servicios más realizados
+app.get('/api/dashboard/servicios-estrella', async (req, res) => {
+    const { desde, hasta } = req.query;
+    try {
+        let pool = await sql.connect(dbConfig);
+
+        const fechaDesde = desde ? `${desde} 00:00:00` : '2000-01-01 00:00:00';
+        const fechaHasta = hasta ? `${hasta} 23:59:59` : '2099-12-31 23:59:59';
+
+        const query = `
+            SELECT TOP 5 
+                s.Nombre, 
+                COUNT(t.Id_Turno) as Cantidad
+            FROM Turno t
+            JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+            WHERE t.Fecha_Hora >= @Desde AND t.Fecha_Hora <= @Hasta
+            GROUP BY s.Nombre
+            ORDER BY Cantidad DESC
+        `;
+
+        let result = await pool.request()
+            .input('Desde', sql.DateTime, fechaDesde)
+            .input('Hasta', sql.DateTime, fechaHasta)
+            .query(query);
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error("Error cargando servicios estrella:", err);
+        res.status(500).json({ error: "Error interno" });
+    }
+});
 
 // ==========================================================================
-// 8. INICIO DEL SERVIDOR
+// 9. INICIO DEL SERVIDOR
 // ==========================================================================
+
 app.listen(port, () => {
     console.log(`Servidor corriendo impecable en http://localhost:${port} 🚀`);
 });

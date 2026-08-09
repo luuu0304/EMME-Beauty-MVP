@@ -8,6 +8,7 @@
 // 6. MÓDULO DE GASTOS
 // 7. MÓDULO DE INGRESOS
 // 8. MÓDULO DE COBRO Y EXTRAS
+// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
 // ==========================================================================
 
 
@@ -43,6 +44,7 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarExtrasDisponibles();
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
+    cargarDatosDashboard()
     
     // Leer el anotador al arrancar
     const seccionGuardada = localStorage.getItem('emme_seccion_activa');
@@ -52,6 +54,36 @@ window.addEventListener('DOMContentLoaded', () => {
         if (botonSeleccionado) {
             botonSeleccionado.click();
         }
+    }
+    // 📅 Inicializar el calendario de rango (Flatpickr)
+    const inputRango = document.getElementById('rangoFechasCustomDash');
+    if (inputRango) {
+        flatpickr(inputRango, {
+            mode: "range",
+            locale: "es", 
+            dateFormat: "Y-m-d", 
+            onChange: function(selectedDates, dateStr, instance) {
+                // Cuando eligen LAS DOS fechas, llamamos al servidor
+                if (selectedDates.length === 2) {
+                    const desde = formatoFechaSQL(selectedDates[0]);
+                    const hasta = formatoFechaSQL(selectedDates[1]);
+                    cargarDatosDashboard(desde, hasta); 
+                }
+            }
+        });
+    }
+
+    // Lógica del desplegable
+    const selectFiltroDash = document.getElementById('filtroRapidoDash');
+    if (selectFiltroDash) {
+        selectFiltroDash.addEventListener('change', (e) => {
+            if (e.target.value === 'personalizado') {
+                inputRango.style.display = 'block';
+            } else {
+                inputRango.style.display = 'none';
+                cargarDatosDashboard(); // Si elige un rango rápido, carga de nuevo
+            }
+        });
     }
 });
 
@@ -88,7 +120,8 @@ const seccionTurnos = document.getElementById('seccionTurnos');
 const seccionClientas = document.getElementById('seccionClientas');
 const seccionEmpleados = document.getElementById('seccionEmpleados');
 const seccionGastos = document.getElementById('seccionGastos');
-const seccionIngresos = document.getElementById('seccionIngresos'); 
+const seccionIngresos = document.getElementById('seccionIngresos');
+const seccionResumenes = document.getElementById('seccionResumenes');
 
 const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
@@ -108,7 +141,8 @@ botonesMenu.forEach(boton => {
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
         seccionGastos.style.display = 'none';
-        if(seccionIngresos) seccionIngresos.style.display = 'none'; 
+        if(seccionIngresos) seccionIngresos.style.display = 'none';
+        if(seccionResumenes) seccionResumenes.style.display = 'none';
 
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
@@ -153,6 +187,9 @@ botonesMenu.forEach(boton => {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
             cargarIngresos();
+        } else if (opcionSeleccionada === 'Resúmenes') {
+            if(seccionResumenes) seccionResumenes.style.display = 'block';
+            tituloHeader.textContent = 'Panel de Control';
         }
     });
 });
@@ -1805,5 +1842,236 @@ async function guardarIngresoManual() {
     } catch (error) {
         console.error("Error:", error);
         mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
+// ==========================================================================
+// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
+// ==========================================================================
+
+// Helper: Formatea una fecha de JS a 'YYYY-MM-DD'
+const formatoFechaSQL = (fecha) => {
+    const yyyy = fecha.getFullYear();
+    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dd = String(fecha.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
+
+// Obtiene las fechas de inicio y fin según el filtro rápido seleccionado
+function obtenerFechasFiltroRapido(tipoFiltro) {
+    const hoy = new Date();
+    let desde = new Date();
+    let hasta = new Date();
+
+    if (tipoFiltro === 'hoy') {
+        // 'desde' y 'hasta' ya son hoy
+    } else if (tipoFiltro === 'ultimos_7_dias') {
+        desde.setDate(hoy.getDate() - 7);
+    } else if (tipoFiltro === 'este_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    } else if (tipoFiltro === 'ultimo_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+        hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0); // El día 0 es el último día del mes anterior
+    }
+    
+    return { desde: formatoFechaSQL(desde), hasta: formatoFechaSQL(hasta) };
+}
+
+// Llama al servidor y actualiza las tarjetitas
+async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
+    let desde, hasta;
+
+    if (desdeCustom && hastaCustom) {
+        // Si usamos el calendario de rango (Flatpickr)
+        desde = desdeCustom;
+        hasta = hastaCustom;
+    } else {
+        // Si usamos el menú desplegable rápido
+        const selectFiltro = document.getElementById('filtroRapidoDash');
+        if (selectFiltro && selectFiltro.value !== 'personalizado') {
+            const fechas = obtenerFechasFiltroRapido(selectFiltro.value);
+            desde = fechas.desde;
+            hasta = fechas.hasta;
+        } else {
+            return; // Está en 'personalizado' pero aún no eligió fechas, no hacemos nada
+        }
+    }
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
+        const kpis = await respuesta.json();
+
+        // Actualizamos el HTML formateando los números con separadores de miles
+        document.getElementById('dashIngresos').textContent = `$${kpis.Ingresos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGastos').textContent = `$${kpis.Gastos.toLocaleString('es-AR')}`;
+        document.getElementById('dashSueldos').textContent = `$${kpis.Sueldos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGanancia').textContent = `$${kpis.GananciaNeta.toLocaleString('es-AR')}`;
+
+        // Llamamos a que se dibuje el gráfico con las mismas fechas
+        cargarGraficoDashboard(desde, hasta);
+
+    } catch (error) {
+        console.error("Error cargando métricas del dashboard:", error);
+    }
+}
+
+// Variables globales para guardar los gráficos
+let graficoIngresosInstancia = null;
+let graficoTurnosInstancia = null;
+let graficoServiciosInstancia = null;
+
+// Llama al servidor y dibuja AMBOS gráficos
+async function cargarGraficoDashboard(desde, hasta) {
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
+        
+        if (!respuesta.ok) return;
+
+        const datos = await respuesta.json();
+
+        // ==========================================
+        // DATOS PARA GRÁFICO 1 (Ingresos por fecha)
+        // ==========================================
+        const etiquetasIngresos = datos.map(d => d.Dia);
+        const valoresIngresos = datos.map(d => d.Total);
+
+        // ==========================================
+        // DATOS PARA GRÁFICO 2 (Turnos por Día Fijo)
+        // ==========================================
+        const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; // Empezamos todo en cero
+
+        // Recorremos los datos de la base de datos y los acomodamos en su día correspondiente
+        datos.forEach(d => {
+            if (d.Turnos > 0) {
+                // Le agregamos la hora T00:00:00 para evitar que JavaScript se confunda con la zona horaria
+                const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
+                let diaIdx = fechaObj.getDay(); // JS nos devuelve: 0 = Domingo, 1 = Lunes, etc.
+                
+                // Lo acomodamos para que encaje con nuestro array (Lunes = 0, Domingo = 6)
+                diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
+                
+                // Sumamos los turnos de esa fecha a la cajita de su día
+                valoresTurnos[diaIdx] += d.Turnos;
+            }
+        });
+
+        // ==========================================
+        // 1. GRÁFICO DE INGRESOS (Ola Mostaza)
+        // ==========================================
+        const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
+        if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
+
+        graficoIngresosInstancia = new Chart(ctxIngresos, {
+            type: 'line', 
+            data: {
+                labels: etiquetasIngresos,
+                datasets: [{
+                    label: 'Ingresos ($)',
+                    data: valoresIngresos,
+                    borderColor: '#D4A347', 
+                    backgroundColor: 'rgba(212, 163, 71, 0.2)', 
+                    borderWidth: 3,
+                    tension: 0.4, 
+                    fill: true, 
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#D4A347',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } }
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // ==========================================
+        // 2. GRÁFICO DE TURNOS (Barras Fijas L a D)
+        // ==========================================
+        const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
+        if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
+
+        graficoTurnosInstancia = new Chart(ctxTurnos, {
+            type: 'bar', 
+            data: {
+                labels: diasSemana, 
+                datasets: [{
+                    label: 'Cantidad de Turnos',
+                    data: valoresTurnos, 
+                    backgroundColor: '#daab53', // ¡ACÁ ESTÁ EL COLOR ARENA/NUDE!
+                    borderRadius: 6 
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { stepSize: 1 } 
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // ==========================================
+        // 3. GRÁFICO DE SERVICIOS ESTRELLA (Horizontal)
+        // ==========================================
+        const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
+        if (respServicios.ok) {
+            const datosServicios = await respServicios.json();
+            
+            const etiquetasServicios = datosServicios.map(d => d.Nombre);
+            const valoresCantidades = datosServicios.map(d => d.Cantidad);
+
+            const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
+            if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
+
+            graficoServiciosInstancia = new Chart(ctxServicios, {
+                type: 'bar', 
+                data: {
+                    labels: etiquetasServicios,
+                    datasets: [{
+                        label: 'Veces realizado',
+                        data: valoresCantidades,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)', // El verde de la "Ganancia Neta"
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // ESTO ES LA MAGIA QUE LO HACE HORIZONTAL
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: '#f0f0f0' },
+                            ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error("Error cargando los gráficos:", error);
     }
 }
