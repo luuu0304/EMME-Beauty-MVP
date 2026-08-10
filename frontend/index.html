@@ -48,12 +48,16 @@
         <div class="header">
             <h1>Gestión de Turnos</h1>
             <div class="header-actions">
+                <!-- Buscadores -->
                 <input type="text" id="buscadorClientas" placeholder="Buscar clienta..." style="display: none;">
                 <input type="text" id="buscadorEmpleadas" placeholder="Buscar profesional..." style="display: none; padding: 10px 16px; font-size: 14px; border: 1px solid #e0e0e0; border-radius: 8px; outline: none;">
+
+                <!-- Botones Principales -->
                 <button class="btn-primary" id="btnNuevaClienta" onclick="prepararNuevaClienta()" style="display: none;">+ Nueva Clienta</button>
                 <button class="btn-primary" id="btnNuevoTurno" onclick="abrirModalTurno()">+ Nuevo Turno</button>
                 <button class="btn-primary" id="btnNuevaEmpleada" onclick="prepararNuevaEmpleada()" style="display: none;">+ Nueva Empleada</button>
                 <button class="btn-primary" id="btnNuevoGasto" onclick="prepararNuevoGasto()" style="display: none;">+ Nuevo Gasto</button>
+                <button class="btn-primary" id="btnNuevoIngreso" onclick="abrirModalNuevoIngreso()" style="display: none;">+ Nuevo Ingreso</button>
             </div>
         </div>
 
@@ -134,34 +138,48 @@
         <!-- 3.4. SECCIÓN: GASTOS -->
         <div id="seccionGastos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px;">Gestione los gastos diarios del local.</p>
                     
-                    <div style="display: flex; gap: 15px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee;">
-                        <span style="font-size: 13px; color: #555; font-weight: bold;">Filtros:</span>
-                        <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: white;">
-                            <option value="todos">Todos los años</option>
-                            <option value="2026" selected>2026</option>
-                            <option value="2025">2025</option>
-                        </select>
-                        <select id="filtroMesGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                            <option value="todos">Todos los meses</option>
-                            <option value="0">Enero</option>
-                            <option value="1">Febrero</option>
-                            <option value="2">Marzo</option>
-                            <option value="3">Abril</option>
-                            <option value="4">Mayo</option>
-                            <option value="5">Junio</option>
-                            <option value="6">Julio</option>
-                            <option value="7">Agosto</option>
-                            <option value="8">Septiembre</option>
-                            <option value="9">Octubre</option>
-                            <option value="10">Noviembre</option>
-                            <option value="11">Diciembre</option>
-                        </select>
-                        <select id="filtroCategoriaGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                    <!-- BLOQUE DE FILTROS GASTOS -->
+                    <div style="display: flex; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee; flex-wrap: wrap;">
+                        
+                        <select id="filtroCategoriaGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px; min-width: 180px;">
                             <option value="todas">Todas las categorías</option>
                         </select>
+
+                        <div style="width: 1px; height: 30px; background-color: #ddd; margin: 0 5px;"></div>
+
+                        <select id="modoFechaGastos" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-weight: 500;">
+                            <option value="mes">Por Mes y Año</option>
+                            <option value="rango">Rango Personalizado</option>
+                        </select>
+
+                        <div id="contenedorMesGastos" style="display: flex; gap: 10px;">
+                            <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                                <option value="todos">Todos los años</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                            <select id="filtroMesGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                                <option value="todos">Todos los meses</option>
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+
+                        <input type="text" id="rangoFechaGastos" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 220px;">
                     </div>
                 </div>
                 
@@ -187,16 +205,48 @@
         <!-- 3.5. SECCIÓN: INGRESOS -->
         <div id="seccionIngresos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px;">Registro de todos los cobros realizados.</p>
                 </div>
 
-                <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
-                        <input type="text" id="filtroIngresos" onkeyup="filtrarIngresos()" placeholder="🔍 Buscar por clienta, servicio, pago..." style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-                        <input type="date" id="filtroFechaIngresos" onchange="filtrarIngresos()" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; color: #555;">
+                <!-- BLOQUE DE FILTROS INGRESOS -->
+                <div style="display: flex; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; flex-wrap: wrap;">
+                    
+                    <!-- Buscador de texto libre exclusivo de ingresos -->
+                    <input type="text" id="buscadorIngresosTexto" onkeyup="filtrarIngresos()" placeholder="🔍 Buscar clienta, servicio, pago..." style="flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;">
+
+                    <div style="width: 1px; height: 30px; background-color: #ddd; margin: 0 5px;"></div>
+
+                    <select id="modoFechaIngresos" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-weight: 500;">
+                        <option value="mes">Por Mes y Año</option>
+                        <option value="rango">Rango Personalizado</option>
+                    </select>
+
+                    <div id="contenedorMesIngresos" style="display: flex; gap: 10px;">
+                        <select id="filtroAnioIngreso" onchange="filtrarIngresos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                            <option value="todos">Todos los años</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2025">2025</option>
+                        </select>
+                        <select id="filtroMesIngreso" onchange="filtrarIngresos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                            <option value="todos">Todos los meses</option>
+                            <option value="0">Enero</option>
+                            <option value="1">Febrero</option>
+                            <option value="2">Marzo</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Mayo</option>
+                            <option value="5">Junio</option>
+                            <option value="6">Julio</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Septiembre</option>
+                            <option value="9">Octubre</option>
+                            <option value="10">Noviembre</option>
+                            <option value="11">Diciembre</option>
+                        </select>
                     </div>
-                    <button onclick="abrirModalNuevoIngreso()" style="background:#D4A347; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Nuevo Ingreso</button>
+
+                    <input type="text" id="rangoFechaIngresos" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 220px;">
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
@@ -317,7 +367,7 @@
                         </div>
                     </div>
                 </div>
-                
+
             </div>
         </div>
     </main>
@@ -637,6 +687,38 @@
             <div class="modal-footer" style="margin-top: 20px;">
                 <button class="btn-secondary" onclick="cerrarModalEspecialidades()">Cancelar</button>
                 <button class="btn-primary" onclick="guardarEspecialidades()">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalNuevoIngreso">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Registrar Nuevo Ingreso</h2>
+            </div>
+            
+            <div class="form-group">
+                <label>Concepto (Ej: Venta de producto, Seña)</label>
+                <input type="text" id="conceptoIngresoManual" placeholder="¿De qué es este ingreso?">
+            </div>
+
+            <div class="form-group">
+                <label>Monto ($)</label>
+                <input type="number" id="montoIngresoManual" placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label>Medio de Pago</label>
+                <select id="pagoIngresoManual">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta / MercadoPago</option>
+                </select>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="cerrarModalNuevoIngreso()">Cancelar</button>
+                <button class="btn-primary" onclick="guardarIngresoManual()">Guardar Ingreso</button>
             </div>
         </div>
     </div>

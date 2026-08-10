@@ -110,6 +110,65 @@ function pedirConfirmacion(mensaje) {
     });
 }
 
+// ---------------------------------------------------------
+    // LÓGICA DE FILTROS ESTANDARIZADOS (Gastos e Ingresos)
+    // ---------------------------------------------------------
+
+    // Inicializar Flatpickr para Gastos
+    const inputRangoGastos = document.getElementById('rangoFechaGastos');
+    if (inputRangoGastos) {
+        flatpickr(inputRangoGastos, {
+            mode: "range",
+            locale: "es",
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) aplicarFiltrosGastos(); // Llama a tu función de filtrado
+            }
+        });
+    }
+
+    // Alternar vista de filtros en Gastos
+    const modoGastos = document.getElementById('modoFechaGastos');
+    if (modoGastos) {
+        modoGastos.addEventListener('change', (e) => {
+            if (e.target.value === 'rango') {
+                document.getElementById('contenedorMesGastos').style.display = 'none';
+                inputRangoGastos.style.display = 'block';
+            } else {
+                document.getElementById('contenedorMesGastos').style.display = 'flex';
+                inputRangoGastos.style.display = 'none';
+                aplicarFiltrosGastos(); // Recalcula si volvemos a "Mes"
+            }
+        });
+    }
+
+    // Inicializar Flatpickr para Ingresos
+    const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
+    if (inputRangoIngresos) {
+        flatpickr(inputRangoIngresos, {
+            mode: "range",
+            locale: "es",
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) filtrarIngresos(); // Llama a tu función de filtrado
+            }
+        });
+    }
+
+    // Alternar vista de filtros en Ingresos
+    const modoIngresos = document.getElementById('modoFechaIngresos');
+    if (modoIngresos) {
+        modoIngresos.addEventListener('change', (e) => {
+            if (e.target.value === 'rango') {
+                document.getElementById('contenedorMesIngresos').style.display = 'none';
+                inputRangoIngresos.style.display = 'block';
+            } else {
+                document.getElementById('contenedorMesIngresos').style.display = 'flex';
+                inputRangoIngresos.style.display = 'none';
+                filtrarIngresos(); // Recalcula si volvemos a "Mes"
+            }
+        });
+    }
 
 // ==========================================================================
 // 2. NAVEGACIÓN, MENÚ LATERAL Y PERSISTENCIA DE ESTADO
@@ -130,6 +189,7 @@ const buscadorClientas = document.getElementById('buscadorClientas');
 const buscadorEmpleadas = document.getElementById('buscadorEmpleadas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
 const btnNuevoGasto = document.getElementById('btnNuevoGasto');
+const btnNuevoIngreso = document.getElementById('btnNuevoIngreso');
 
 // Función principal del menú
 botonesMenu.forEach(boton => {
@@ -149,6 +209,7 @@ botonesMenu.forEach(boton => {
         btnNuevaEmpleada.style.display = 'none';
         btnNuevoGasto.style.display = 'none';
         buscadorClientas.style.display = 'none';
+        if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'none';
         
         // CORRECCIÓN: Ahora sí se oculta al cambiar de sección
         if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
@@ -186,6 +247,7 @@ botonesMenu.forEach(boton => {
         } else if (opcionSeleccionada === 'Ingresos') {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
+            if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'block'; // <-- AGREGAR ESTO
             cargarIngresos();
         } else if (opcionSeleccionada === 'Resúmenes') {
             if(seccionResumenes) seccionResumenes.style.display = 'block';
@@ -810,10 +872,15 @@ async function cargarClientas() {
                         <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
-                    <div class="card-actions">
-                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
-                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
-                        <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">+ Turno</button>
+                   <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
+                        <!-- 1. Principal: Agendar Turno -->
+                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                        
+                        <!-- 2. Secundario: Ver ficha -->
+                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                        
+                        <!-- 3. Terciario: Editar -->
+                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </div>
                 </div>
             `;
@@ -826,9 +893,9 @@ async function cargarClientas() {
                     <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
                     <td style="padding: 12px 15px;">${fechaNac}</td>
                     <td style="padding: 12px 15px; text-align: center;">
-                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
-                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
-                        <button class="btn-icon" title="Agendar Turno" style="color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">📅</button>
+                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </td>
                 </tr>
             `;
@@ -1346,22 +1413,54 @@ async function cargarGastos() {
 }
 
 function aplicarFiltrosGastos() {
-    const mesSeleccionado = document.getElementById('filtroMesGasto').value;
     const catSeleccionada = document.getElementById('filtroCategoriaGasto').value;
-    const filtroAnio = document.getElementById('filtroAnioGasto');
-    const anioSeleccionado = filtroAnio ? filtroAnio.value : 'todos';
-    
+    const modoFecha = document.getElementById('modoFechaGastos').value;
+
+    // Variables para el modo 'Mes y Año'
+    const mesSeleccionado = document.getElementById('filtroMesGasto').value;
+    const anioSeleccionado = document.getElementById('filtroAnioGasto').value;
+
+    // Variables para el modo 'Rango Personalizado'
+    const rangoValor = document.getElementById('rangoFechaGastos').value;
+    let fechaDesde = null, fechaHasta = null;
+
+    if (modoFecha === 'rango' && rangoValor) {
+        // Flatpickr separa el rango con " a " o " to "
+        if (rangoValor.includes(' a ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' a ');
+        } else if (rangoValor.includes(' to ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' to ');
+        } else if (rangoValor.length === 10) {
+            fechaDesde = rangoValor;
+            fechaHasta = rangoValor;
+        }
+    }
+
     const gastosFiltrados = memoriaGastos.filter(gasto => {
-        const fechaObj = new Date(gasto.Fecha);
-        const mesGasto = fechaObj.getUTCMonth().toString();
-        const anioGasto = fechaObj.getUTCFullYear().toString(); 
+        // 1. Validar Filtro de Categoría
         const categoriaGasto = gasto.Nombre_Categoria || 'Sin tipo';
-        
-        const pasaFiltroMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
         const pasaFiltroCat = (catSeleccionada === 'todas') || (categoriaGasto === catSeleccionada);
-        const pasaFiltroAnio = (anioSeleccionado === 'todos') || (anioGasto === anioSeleccionado);
+
+        // 2. Validar Filtro de Fecha
+        let pasaFiltroFecha = true;
         
-        return pasaFiltroMes && pasaFiltroCat && pasaFiltroAnio;
+        // Formateamos la fecha del gasto para que sea fácil de comparar (YYYY-MM-DD)
+        const fechaObj = new Date(gasto.Fecha);
+        const anioGasto = fechaObj.getUTCFullYear().toString();
+        const mesGasto = fechaObj.getUTCMonth().toString();
+        const diaStr = String(fechaObj.getUTCDate()).padStart(2, '0');
+        const mesStr = String(fechaObj.getUTCMonth() + 1).padStart(2, '0');
+        const fechaGastoFormateada = `${anioGasto}-${mesStr}-${diaStr}`;
+
+        if (modoFecha === 'mes') {
+            const pasaMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
+            const pasaAnio = (anioSeleccionado === 'todos') || (anioGasto === anioSeleccionado);
+            pasaFiltroFecha = pasaMes && pasaAnio;
+        } else if (modoFecha === 'rango' && fechaDesde && fechaHasta) {
+            pasaFiltroFecha = (fechaGastoFormateada >= fechaDesde) && (fechaGastoFormateada <= fechaHasta);
+        }
+
+        return pasaFiltroCat && pasaFiltroFecha;
     });
     
     dibujarTablaGastos(gastosFiltrados);
@@ -1545,21 +1644,56 @@ async function cargarIngresos() {
 }
 
 function filtrarIngresos() {
-    const textoBuscado = document.getElementById('filtroIngresos').value.toLowerCase();
-    const fechaBuscadaInput = document.getElementById('filtroFechaIngresos').value; 
+    // Actualizado al nuevo ID del HTML
+    const inputBuscador = document.getElementById('buscadorIngresosTexto');
+    const textoBuscado = inputBuscador ? inputBuscador.value.toLowerCase() : '';
+    
+    const modoFecha = document.getElementById('modoFechaIngresos').value;
+    const mesSeleccionado = document.getElementById('filtroMesIngreso').value;
+    const anioSeleccionado = document.getElementById('filtroAnioIngreso').value;
+    
+    const rangoValor = document.getElementById('rangoFechaIngresos').value;
+    let fechaDesde = null, fechaHasta = null;
+
+    if (modoFecha === 'rango' && rangoValor) {
+        if (rangoValor.includes(' a ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' a ');
+        } else if (rangoValor.includes(' to ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' to ');
+        } else if (rangoValor.length === 10) {
+            fechaDesde = rangoValor;
+            fechaHasta = rangoValor;
+        }
+    }
 
     const filas = document.querySelectorAll('#tablaIngresosBody tr');
     let sumaTotal = 0; 
 
     filas.forEach(fila => {
-        if (fila.cells.length === 1) return; 
+        if (fila.cells.length === 1) return; // Ignora la fila de "Cargando..."
 
         const contenidoFila = fila.textContent.toLowerCase();
-        const fechaFila = fila.getAttribute('data-fecha'); 
+        const fechaFila = fila.getAttribute('data-fecha'); // Lee la fecha oculta en el HTML (YYYY-MM-DD)
 
+        // 1. Filtro de Texto (Clienta, servicio, etc.)
         const cumpleTexto = contenidoFila.includes(textoBuscado);
-        const cumpleFecha = fechaBuscadaInput === "" || fechaFila === fechaBuscadaInput;
 
+        // 2. Filtro de Fecha
+        let cumpleFecha = true;
+        if (fechaFila) {
+            if (modoFecha === 'mes') {
+                const anioFila = fechaFila.substring(0, 4);
+                const mesFila = (parseInt(fechaFila.substring(5, 7)) - 1).toString(); // De 01-12 a 0-11
+                
+                const pasaMes = (mesSeleccionado === 'todos') || (mesFila === mesSeleccionado);
+                const pasaAnio = (anioSeleccionado === 'todos') || (anioFila === anioSeleccionado);
+                cumpleFecha = pasaMes && pasaAnio;
+            } else if (modoFecha === 'rango' && fechaDesde && fechaHasta) {
+                cumpleFecha = (fechaFila >= fechaDesde) && (fechaFila <= fechaHasta);
+            }
+        }
+
+        // Aplicamos el resultado y sumamos la plata
         if (cumpleTexto && cumpleFecha) {
             fila.style.display = '';
             
@@ -1802,13 +1936,26 @@ async function confirmarCobroTurno() {
 const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
 
 function abrirModalNuevoIngreso() {
+    // 1. Limpiamos los campos
     document.getElementById('conceptoIngresoManual').value = '';
     document.getElementById('montoIngresoManual').value = '';
-    if (modalNuevoIngreso) modalNuevoIngreso.classList.add('active');
+    
+    // 2. Buscamos el modal en el HTML (asegurate de que el ID sea correcto)
+    const modal = document.getElementById('modalNuevoIngreso');
+    
+    // 3. Lo abrimos
+    if (modal) {
+        modal.classList.add('active');
+    } else {
+        console.error("¡Ojo! No encontré el modal. Revisá que el ID en el HTML sea 'modalNuevoIngreso'.");
+    }
 }
 
 function cerrarModalNuevoIngreso() {
-    if (modalNuevoIngreso) modalNuevoIngreso.classList.remove('active');
+    const modal = document.getElementById('modalNuevoIngreso');
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 async function guardarIngresoManual() {
