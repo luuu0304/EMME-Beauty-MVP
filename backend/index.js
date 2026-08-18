@@ -542,7 +542,8 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                     s.Precio_Base, 
                     t.Id_Empleada,
                     t.Estado,
-                    t.Color
+                    t.Color,
+                    t.Sena_Monto
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
@@ -556,30 +557,62 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
     }
 });
 
-// Crear un nuevo turno (Con validación de solapamiento)
+// Crear un nuevo turno (Con validación de rango de tiempo y registro de Ingreso)
 app.post('/api/turnos', async (req, res) => {
+    const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto } = req.body;
+
     try {
-        const { Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora } = req.body;
         let pool = await sql.connect(dbConfig);
 
-        // Validación: Evitar doble reserva
+        // 1. Primero averiguamos cuánto dura el servicio nuevo que queremos agendar
+        const infoServicio = await pool.request()
+            .input('Id_Servicio', sql.Int, Id_Servicio)
+            .query(`SELECT Duracion_Minutos FROM Servicio WHERE Id_Servicio = @Id_Servicio`);
+        
+        const duracionNueva = infoServicio.recordset[0].Duracion_Minutos;
+
+        // 2. Validación de solapamiento (RANGOS DE TIEMPO)
         const chequeo = await pool.request()
             .input('Id_Empleada', sql.Int, Id_Empleada)
-            .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
-            .query(`SELECT Id_Turno FROM Turno WHERE Id_Empleada = @Id_Empleada AND Fecha_Hora = @Fecha_Hora`);
+            .input('NuevaFechaInicio', sql.DateTime, Fecha_Hora)
+            .input('DuracionNueva', sql.Int, duracionNueva)
+            .query(`
+                SELECT t.Id_Turno 
+                FROM Turno t
+                JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                WHERE t.Id_Empleada = @Id_Empleada
+                AND (
+                    -- El turno nuevo empieza ANTES de que termine el existente...
+                    @NuevaFechaInicio < DATEADD(MINUTE, s.Duracion_Minutos, t.Fecha_Hora)
+                    -- ...Y el turno nuevo termina DESPUÉS de que empiece el existente
+                    AND DATEADD(MINUTE, @DuracionNueva, @NuevaFechaInicio) > t.Fecha_Hora
+                )
+            `);
 
         if (chequeo.recordset.length > 0) {
-            return res.status(400).send("La profesional ya tiene un turno agendado en ese horario.");
+            return res.status(400).send("La profesional ya tiene un turno que se superpone en ese horario.");
         }
 
+        // 3. Insertamos el turno normal
         await pool.request()
             .input('Id_Clienta', sql.Int, Id_Clienta)
             .input('Id_Empleada', sql.Int, Id_Empleada)
             .input('Id_Servicio', sql.Int, Id_Servicio)
             .input('Fecha_Hora', sql.DateTime, Fecha_Hora)
+            .input('Sena_Monto', sql.Decimal(10,2), Sena_Monto || 0)
             .query(`
-                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora) 
-                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora)
+                INSERT INTO Turno (Id_Clienta, Id_Empleada, Id_Servicio, Fecha_Hora, Sena_Monto) 
+                VALUES (@Id_Clienta, @Id_Empleada, @Id_Servicio, @Fecha_Hora, @Sena_Monto);
+
+                -- 4. SI HAY SEÑA, REGISTRAMOS EL INGRESO AUTOMÁTICAMENTE
+                IF (@Sena_Monto > 0)
+                BEGIN
+                    DECLARE @NombreC VARCHAR(100);
+                    SELECT @NombreC = Nombre + ' ' + Apellido FROM Clienta WHERE Id_Clienta = @Id_Clienta;
+                    
+                    INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Medio_Pago) 
+                    VALUES ('Seña abonada - ' + @NombreC, @Sena_Monto, GETDATE(), 'Transferencia');
+                END
             `);
         
         res.status(201).json({ message: "¡Turno creado exitosamente!" });
@@ -616,6 +649,36 @@ app.put('/api/turnos/:id/detalles', async (req, res) => {
     }
 });
 
+// ACTUALIZAR SEÑA DE UN TURNO (Y registrar el ingreso automáticamente)
+app.put('/api/turnos/:id/sena', async (req, res) => {
+    const { id } = req.params;
+    const { Sena_Monto, Nombre_Clienta } = req.body; // <-- Nombre corregido
+    
+    try {
+        let pool = await sql.connect(dbConfig);
+        
+        // 1. Guardamos la seña en el turno
+        await pool.request()
+            .input('Id', sql.Int, id)
+            .input('Monto', sql.Decimal(10,2), Sena_Monto)
+            .query('UPDATE Turno SET Sena_Monto = @Monto WHERE Id_Turno = @Id'); // <-- Columna correcta
+            
+        // 2. Si la seña es mayor a 0, la registramos como un Ingreso en la caja de hoy
+        if (Sena_Monto > 0) {
+            await pool.request()
+                .input('Concepto', sql.VarChar, `Seña abonada - ${Nombre_Clienta}`)
+                .input('Monto', sql.Decimal(10,2), Sena_Monto)
+                .input('Medio', sql.VarChar, 'Transferencia') // Asumimos transferencia
+                .query(`INSERT INTO Ingreso (Concepto, Monto_Total, Fecha, Medio_Pago) 
+                        VALUES (@Concepto, @Monto, GETDATE(), @Medio)`);
+        }
+        
+        res.json({ message: "Seña guardada e ingreso registrado" });
+    } catch (err) {
+        console.error("Error al actualizar seña:", err);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
 
 // ==========================================================================
 // 6. RUTAS: GASTOS & CATEGORÍAS

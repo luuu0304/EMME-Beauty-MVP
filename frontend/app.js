@@ -388,8 +388,8 @@ async function guardarTurno() {
     const grupoExpress = document.getElementById('grupoClientaExpress');
 
     if (grupoExpress && (grupoExpress.style.display === 'block' || grupoExpress.style.display === '')) {
-        const inputNombreExpress = document.getElementById('inputNombreExpress');
-        const inputApellidoExpress = document.getElementById('inputApellidoExpress');
+        const inputNombreExpress = document.getElementById('nombreExpress');
+        const inputApellidoExpress = document.getElementById('apellidoExpress');
         
         const nombreExp = inputNombreExpress ? inputNombreExpress.value.trim() : '';
         const apellidoExp = inputApellidoExpress ? inputApellidoExpress.value.trim() : '';
@@ -442,12 +442,16 @@ async function guardarTurno() {
         return;
     }
 
+    const inputSenaTurno = document.getElementById('senaTurnoInput');
+    const montoSena = inputSenaTurno && inputSenaTurno.value ? parseFloat(inputSenaTurno.value) : 0;
+
     const fechaHoraCompleta = `${fecha}T${hora}:00`;
     const nuevoTurno = {
         Id_Clienta: parseInt(idClientaFinal), 
         Id_Empleada: parseInt(idEmpleada),
         Id_Servicio: parseInt(idServicio),
-        Fecha_Hora: fechaHoraCompleta
+        Fecha_Hora: fechaHoraCompleta,
+        Sena_Monto: montoSena 
     };
 
     try {
@@ -646,8 +650,9 @@ async function cargarTurnosAgenda() {
         turnos.forEach(turno => {
             const fechaObj = new Date(turno.Fecha_Hora);
             const horas = fechaObj.getHours().toString().padStart(2, '0');
-            const minutos = fechaObj.getMinutes().toString().padStart(2, '0');
-            const horaFormateada = `${horas}:${minutos}`; 
+            const minutosReales = fechaObj.getMinutes();
+            const minutosCelda = minutosReales < 30 ? '00' : '30';
+            const horaFormateada = `${horas}:${minutosCelda}`;
             
             const celdaDestino = document.querySelector(`.agenda-celda[data-hora="${horaFormateada}"][data-id-empleada="${turno.Id_Empleada}"]`);
 
@@ -663,13 +668,16 @@ async function cargarTurnosAgenda() {
 
                 tarjeta.onclick = () => {
                     const precioServicio = turno.Precio_Base || 0; 
+                    const senaPagada = turno.Sena_Monto || 0; // <--- Agregamos esto
                     abrirModalDetalleTurno(
                         turno.Id_Turno, 
                         turno.Nombre_Clienta, 
                         turno.Nombre_Servicio, 
                         precioServicio,
                         turno.Estado, 
-                        turno.Color);
+                        turno.Color,
+                        senaPagada
+                    );
                 };
                 tarjeta.innerHTML = `
                     <div class="turno-titulo">${turno.Nombre_Clienta}</div>
@@ -684,6 +692,42 @@ async function cargarTurnosAgenda() {
     }
 }
 
+// Guarda la seña desde el detalle del turno sin tener que cobrar todo el servicio
+async function guardarSenaIndependiente() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const inputSena = document.getElementById('senaDetalleInput');
+    const nuevaSena = parseFloat(inputSena.value) || 0;
+    
+    // Sacamos el nombre de la clienta del texto para usarlo en el concepto del Ingreso
+    let nombreClienta = document.getElementById('nombreClientaCobro').textContent;
+    nombreClienta = nombreClienta.replace('Clienta: ', '').trim();
+
+    if (!idTurno) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/sena`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                Sena_Monto: nuevaSena, // <--- AHORA SÍ, CON EL NOMBRE CORRECTO
+                Nombre_Clienta: nombreClienta 
+            })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Seña actualizada y registrada en Ingresos!", "success");
+            
+            const textoSena = document.getElementById('textoDetalleSena');
+            if(textoSena) textoSena.textContent = `Seña abonada: -$${nuevaSena.toLocaleString('es-AR')}`;
+            
+        } else {
+            mostrarNotificacion("Error al guardar la seña.", "error");
+        }
+    } catch (error) {
+        console.error("Error guardando la seña:", error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
 
 // ==========================================================================
 // 4. MÓDULO DE CLIENTAS
@@ -1723,14 +1767,27 @@ const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
 const SENA_ABONADA = 8000; 
 
-function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase, estado, color) {
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0) {
     precioBaseActual = parseFloat(precioBase) || 0;
+    const senaActual = parseFloat(sena) || 0;
     
     document.getElementById('idTurnoCobroOculto').value = idTurno;
     document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
-    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${servicioBase}`;
+    
+    // Corregido: el parámetro se llama nombreServicio
+    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
     document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
     
+    // --- NUEVO: Mostrar la seña en los campos ---
+    const inputSena = document.getElementById('senaDetalleInput');
+    if (inputSena) inputSena.value = senaActual;
+    
+    const textoDetalleSena = document.getElementById('textoDetalleSena');
+    if (textoDetalleSena) {
+        textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
+    }
+    // ------------------------------------------
+
     document.getElementById('colorTurnoInput').value = '';
     
     const contenedorColores = document.getElementById('listaColoresGuardados');
@@ -1751,6 +1808,9 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
     const inputDescuento = document.getElementById('descuentoCobroInput');
     const checkboxes = document.querySelectorAll('.check-extra');
     
+    // Capturamos el botón de actualizar seña para poder bloquearlo si es necesario
+    const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
+    
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
         badgeEstado.style.color = '#155724';
@@ -1763,6 +1823,8 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
         btnGuardar.style.display = 'none';
         inputColor.disabled = true;
         inputDescuento.disabled = true;
+        if (inputSena) inputSena.disabled = true;
+        if (btnActualizarSena) btnActualizarSena.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
     } else {
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
@@ -1776,13 +1838,20 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
         btnGuardar.style.display = 'inline-block';
         inputColor.disabled = false;
         inputDescuento.disabled = false;
+        if (inputSena) inputSena.disabled = false;
+        if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
     }
 
     document.getElementById('descuentoCobroInput').value = 0;
     checkboxes.forEach(chk => chk.checked = false);
-    recalcularTotalCobro();
     
+    // Si la tenés definida, esto recalcula la matemática final
+    if (typeof recalcularTotalCobro === 'function') {
+        recalcularTotalCobro();
+    }
+    
+    const modalDetalleTurno = document.getElementById('modalDetalleTurno');
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
@@ -1869,16 +1938,27 @@ function recalcularTotalCobro() {
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
-    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    // LEEMOS EL VALOR REAL DE LA SEÑA DESDE EL INPUT
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
+
+    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
     
     if (totalFinal < 0) totalFinal = 0;
 
     document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
 }
 
+// Escuchamos cambios en Descuento
 const inputDescuento = document.getElementById('descuentoCobroInput');
 if (inputDescuento) {
     inputDescuento.addEventListener('input', recalcularTotalCobro);
+}
+
+// Escuchamos cambios en Seña para actualizar en tiempo real
+const inputSenaDetalle = document.getElementById('senaDetalleInput');
+if (inputSenaDetalle) {
+    inputSenaDetalle.addEventListener('input', recalcularTotalCobro);
 }
 
 async function confirmarCobroTurno() {
@@ -1887,6 +1967,10 @@ async function confirmarCobroTurno() {
     
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
+    
+    // LEEMOS LA SEÑA ACÁ TAMBIÉN
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
     
     const extrasSeleccionados = [];
     let sumaExtras = 0;
@@ -1897,7 +1981,7 @@ async function confirmarCobroTurno() {
         sumaExtras += parseFloat(chk.value);
     });
 
-    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
     if (totalFinal < 0) totalFinal = 0;
 
     const datosCobro = {

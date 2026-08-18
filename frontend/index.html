@@ -481,6 +481,12 @@
                 </div>
             </div>
 
+            <!-- NUEVO CAMPO: SEÑA (OPCIONAL) -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Seña abonada ($) - <span style="color: #888; font-weight: normal;">Opcional</span></label>
+                <input type="number" id="senaTurnoInput" placeholder="Ej. 5000" value="0">
+            </div>
+
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalTurno()">Cancelar</button>
                 <button class="btn-primary" onclick="guardarTurno()">Agendar</button>
@@ -490,62 +496,86 @@
 
     <!-- Modal Detalle y Cobro de Turno -->
     <div class="modal-overlay" id="modalDetalleTurno">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 750px; width: 90%;"> <!-- Ampliamos el ancho a 750px -->
             <div class="modal-header">
-                <h2>Detalle del Turno</h2>
+                <h2>Detalle y Cobro del Turno</h2>
             </div>
             
             <input type="hidden" id="idTurnoCobroOculto">
             
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
-                <h3 id="nombreClientaCobro" style="margin: 0 0 5px 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
-                <p id="servicioBaseCobro" style="margin: 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
-                <p id="precioBaseCobro" style="margin: 5px 0 0 0; font-weight: bold; color: var(--mostaza);">Precio Base: $0</p>
+            <!-- CONTENEDOR DE DOS COLUMNAS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start;">
+                
+                <!-- COLUMNA IZQUIERDA: Info del Turno -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    
+                    <!-- Tarjeta de Info Base -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <h3 id="nombreClientaCobro" style="margin: 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
+                            <span id="estadoTurnoBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404;">Pendiente</span>
+                        </div>
+                        <p id="servicioBaseCobro" style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
+                        <p id="precioBaseCobro" style="margin: 0; font-weight: bold; color: var(--mostaza); font-size: 15px;">Precio Base: $0</p>
+                        
+                        <!-- CAMPO SEÑA -->
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                            <label style="font-size: 13px; font-weight: 500; color: #333; white-space: nowrap;">Seña ($):</label>
+                            <input type="number" id="senaDetalleInput" placeholder="0" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;">
+                            <button onclick="guardarSenaIndependiente()" style="background: var(--mostaza); color: white; border: none; padding: 7px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">Actualizar</button>
+                        </div>
+                    </div>
+
+                    <!-- Esmalte / Detalles -->
+                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+                        <label style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 8px;">Color / Esmalte (Opcional):</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="colorTurnoInput" placeholder="Ej. Vía Láctea..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <button id="btnGuardarDetalles" onclick="guardarDetallesTurno()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Guardar Info</button>
+                        </div>
+                        <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: Facturación y Extras -->
+                <div style="display: flex; flex-direction: column; gap: 15px; height: 100%;">
+                    
+                    <!-- Adicionales -->
+                    <div class="form-group" style="margin: 0; background: white; border: 1px solid #eee; border-radius: 8px; padding: 15px; flex-grow: 1;">
+                        <label style="margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; font-weight: 500; font-size: 14px;">Adicionales y Extras</label>
+                        <div id="contenedorExtras" style="display: flex; flex-direction: column; gap: 8px; max-height: 110px; overflow-y: auto;">
+                            <p style="font-size: 13px; color: #888; margin: 0;">Cargando extras...</p>
+                        </div>
+                    </div>
+
+                    <!-- Descuentos y Pago -->
+                    <div class="form-row" style="margin: 0;">
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 13px;">Medio de Pago</label>
+                            <select id="selectMedioPago" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia">Transferencia</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 13px;">Descuento ($)</label>
+                            <input type="number" id="descuentoCobroInput" placeholder="Ej. 1000" value="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div style="text-align: right; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                        <span id="textoDetalleSena" style="font-size: 13px; color: #666;">Seña abonada: -$0</span><br>
+                        <span style="font-size: 15px; color: #333; font-weight: bold;">TOTAL A COBRAR: </span>
+                        <br>
+                        <span id="totalFinalCobro" style="font-size: 28px; color: #28a745; font-weight: bold;">$0</span>
+                    </div>
+                </div>
             </div>
 
-            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 14px; font-weight: bold;">Estado del turno:</span>
-                    <span id="estadoTurnoBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404;">Pendiente</span>
-                </div>
-                <label style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 5px;">Color / Esmalte (Opcional):</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="colorTurnoInput" placeholder="Ej. Vía Láctea, Francesitas..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button id="btnGuardarDetalles" onclick="guardarDetallesTurno()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Guardar Info</button>
-                </div>
-                <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
-            </div>
-
-            <div class="form-group" style="margin-top: 15px;">
-                <label style="margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px;">Adicionales y Extras</label>
-                <div id="contenedorExtras" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
-                    <p style="font-size: 13px; color: #888; margin: 0;">Cargando extras...</p>
-                </div>
-            </div>
-
-            <div class="form-row" style="margin-top: 20px;">
-                <div class="form-group">
-                    <label>Medio de Pago</label>
-                    <select id="selectMedioPago" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Transferencia">Transferencia</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Descuento ($)</label>
-                    <input type="number" id="descuentoCobroInput" placeholder="Ej. 1000" value="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-            </div>
-
-            <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #eee;">
-                <span style="font-size: 14px; color: #666;">Seña abonada: -$8.000</span><br>
-                <span style="font-size: 18px; color: #333; font-weight: bold;">TOTAL A COBRAR: </span>
-                <span id="totalFinalCobro" style="font-size: 24px; color: #28a745; font-weight: bold;">$0</span>
-            </div>
-
-            <div class="modal-footer" style="margin-top: 20px;">
+            <div class="modal-footer" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px;">
                 <button class="btn-secondary" onclick="cerrarModalDetalleTurno()">Volver</button>
-                <button class="btn-primary" id="btnConfirmarCobro" onclick="confirmarCobroTurno()" style="background-color: #28a745;">Confirmar y Cobrar</button>
+                <button class="btn-primary" id="btnConfirmarCobro" onclick="confirmarCobroTurno()" style="background-color: #28a745; padding-left: 30px; padding-right: 30px;">Confirmar y Cobrar</button>
             </div>
         </div>
     </div>

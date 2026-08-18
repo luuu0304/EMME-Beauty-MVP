@@ -187,3 +187,4 @@ ALTER TABLE Turno ADD Liquidado BIT DEFAULT 0;
 ALTER TABLE Turno ADD Id_Liquidacion INT NULL;
 ALTER TABLE Turno ADD CONSTRAINT FK_Turno_Liquidacion FOREIGN KEY (Id_Liquidacion) REFERENCES Liquidacion_Sueldo(Id_Liquidacion);
 GO
+
