@@ -163,7 +163,7 @@ GO
 UPDATE Servicio SET Area = 'Manicura' WHERE Nombre LIKE '%Kapping%' OR Nombre LIKE '%Manicura%';
 UPDATE Servicio SET Area = 'Cejas y Pestañas' WHERE Nombre LIKE '%Lifting%';
 
-SELECT * FROM Clienta;
+SELECT * FROM Empleada_Area;
 
 USE EmmE_Beauty;
 GO

@@ -147,7 +147,7 @@ app.get('/api/clientas/:id/historial', async (req, res) => {
 // 3. RUTAS: EMPLEADAS
 // ==========================================================================
 
-// Obtener todas las empleadas con su saldo acumulado y la info de su última liquidación
+// Obtener todas las empleadas con su saldo acumulado, info de su última liquidación y sus áreas
 app.get('/api/empleadas', async (req, res) => {
     try {
         let pool = await sql.connect(dbConfig);
@@ -160,7 +160,8 @@ app.get('/api/empleadas', async (req, res) => {
                 e.Telefono,
                 ISNULL(Saldo.Saldo_Acumulado, 0) AS Saldo_Acumulado,
                 UltimaLiq.Fecha_Pago AS Ultima_Fecha_Liq,
-                UltimaLiq.Monto_Abonado AS Ultimo_Monto_Liq
+                UltimaLiq.Monto_Abonado AS Ultimo_Monto_Liq,
+                AreasInfo.Areas -- NUEVO: Traemos el texto con las áreas
             FROM Empleada e
             
             -- 1. Subconsulta para el saldo acumulado actual
@@ -188,6 +189,13 @@ app.get('/api/empleadas', async (req, res) => {
                 WHERE ls.Id_Empleada = e.Id_Empleada
                 ORDER BY Fecha_Pago DESC
             ) UltimaLiq
+
+            -- 3. NUEVO: Subconsulta para traer las áreas separadas por coma
+            OUTER APPLY (
+                SELECT STRING_AGG(ea.Area, ',') AS Areas
+                FROM Empleada_Area ea
+                WHERE ea.Id_Empleada = e.Id_Empleada
+            ) AreasInfo
         `);
         
         res.json(result.recordset);

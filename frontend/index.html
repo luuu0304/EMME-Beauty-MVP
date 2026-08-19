@@ -79,10 +79,25 @@
 
             <!-- VISTA 1: AGENDA DIARIA -->
             <div id="vistaDiaria" style="display: block;">
-                <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: white; padding: 10px 15px; border-radius: 8px; width: fit-content; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <button class="btn-icon" id="btnDiaAnterior">◀</button>
-                    <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
-                    <button class="btn-icon" id="btnDiaSiguiente">▶</button>
+                
+                <!-- BARRA DE CONTROLES SUPERIOR (En la misma línea) -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    
+                    <!-- Controles de Fecha (Izquierda) -->
+                    <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <button class="btn-icon" id="btnDiaAnterior">◀</button>
+                        <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
+                        <button class="btn-icon" id="btnDiaSiguiente">▶</button>
+                    </div>
+                    
+                    <!-- Filtros por Especialidad (Derecha) -->
+                    <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center;">
+                        <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: #e2e3e5; border: none; padding: 6px 15px; cursor: pointer;">Todo</button>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Manicura', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Manicura</button>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Cejas y Pestañas', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Cejas y Pestañas</button>
+                    </div>
+                    
                 </div>
 
                 <div class="agenda-container">

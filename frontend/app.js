@@ -522,7 +522,7 @@ async function inicializarAgendaDiaria() {
         if (agendaHeader) {
             agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
             empleadas.forEach(emp => {
-                agendaHeader.innerHTML += `<div style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
+                agendaHeader.innerHTML += `<div class="col-emp-${emp.Id_Empleada}" data-areas="${emp.Areas || ''}" style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
             });
         }
 
@@ -542,7 +542,8 @@ async function inicializarAgendaDiaria() {
             let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
             
             empleadas.forEach(emp => {
-                htmlFilaEnPunto += `<div class="agenda-celda" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+                // CAMBIO ACÁ: Agregamos la clase col-emp-${emp.Id_Empleada}
+                htmlFilaEnPunto += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
             });
             
             filaEnPunto.innerHTML = htmlFilaEnPunto;
@@ -556,7 +557,7 @@ async function inicializarAgendaDiaria() {
                 let htmlFilaMedia = `<div class="hora-col">${stringHoraMedia}</div>`;
                 
                 empleadas.forEach(emp => {
-                    htmlFilaMedia += `<div class="agenda-celda" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+                    htmlFilaMedia += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
                 });
                 
                 filaMediaHora.innerHTML = htmlFilaMedia;
@@ -604,6 +605,37 @@ async function inicializarAgendaDiaria() {
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
+}
+
+// NUEVA FUNCIÓN: Filtrar agenda al tocar los botones
+function filtrarAgendaPorArea(areaSeleccionada, botonClickeado) {
+    // 1. Efecto visual: despintar todos y pintar el seleccionado
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.border = '1px solid #ccc';
+    });
+    botonClickeado.style.background = '#e2e3e5';
+    botonClickeado.style.border = 'none';
+
+    // 2. Buscar todas las columnas del encabezado
+    const headers = document.querySelectorAll('#agendaHeader > div:not(.hora-col)');
+
+    headers.forEach(header => {
+        const areasDeLaChica = header.getAttribute('data-areas');
+        
+        // Averiguar la clase que identifica a esta chica (ej. "col-emp-2")
+        const claseColumna = Array.from(header.classList).find(c => c.startsWith('col-emp-'));
+        const celdasDeLaChica = document.querySelectorAll(`.${claseColumna}`);
+
+        // 3. Mostrar u ocultar dependiendo de si hace el servicio
+        if (areaSeleccionada === 'Todo' || (areasDeLaChica && areasDeLaChica.includes(areaSeleccionada))) {
+            header.style.display = ''; 
+            celdasDeLaChica.forEach(celda => celda.style.display = ''); 
+        } else {
+            header.style.display = 'none';
+            celdasDeLaChica.forEach(celda => celda.style.display = 'none');
+        }
+    });
 }
 
 function inicializarFechaAgenda() {
