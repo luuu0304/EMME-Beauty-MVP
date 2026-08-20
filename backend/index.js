@@ -549,12 +549,14 @@ app.get('/api/turnos/fecha/:fecha', async (req, res) => {
                     s.Duracion_Minutos,
                     s.Precio_Base, 
                     t.Id_Empleada,
+                    e.Nombre_Ap, -- ¡Acá agregamos la columna que faltaba!
                     t.Estado,
                     t.Color,
                     t.Sena_Monto
                 FROM Turno t
                 JOIN Clienta c ON t.Id_Clienta = c.Id_Clienta
                 JOIN Servicio s ON t.Id_Servicio = s.Id_Servicio
+                JOIN Empleada e ON t.Id_Empleada = e.Id_Empleada -- ¡Y acá unimos la tabla!
                 WHERE CAST(t.Fecha_Hora AS DATE) = @FechaBuscada
             `);
             

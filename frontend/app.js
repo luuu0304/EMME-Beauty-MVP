@@ -475,7 +475,7 @@ async function guardarTurno() {
     }
 }
 
-function agendarTurnoRapido(idClienta) {
+function agendarTurnoRapido(idClienta, nombre, apellido) {
     const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
     const grupoExpress = document.getElementById('grupoClientaExpress');
     
@@ -484,9 +484,11 @@ function agendarTurnoRapido(idClienta) {
         grupoSeleccion.style.display = 'block';
     }
 
-    const selectClienta = document.getElementById('selectClientaTurno');
-    if (selectClienta) {
-        selectClienta.value = idClienta;
+    const inputOculto = document.getElementById('selectClientaTurno');
+    const inputBuscar = document.getElementById('inputBuscarClientaTurno');
+    if (inputOculto && inputBuscar) {
+        inputOculto.value = idClienta;
+        inputBuscar.value = nombre + (apellido ? ' ' + apellido : '');
     }
 
     abrirModalTurno();
@@ -661,12 +663,218 @@ function cambiarVistaAgenda(vista) {
         vistaSemanal.style.display = 'none';
         btnDiaria.classList.add('active');
         btnSemanal.classList.remove('active');
-    } else {
+    } else if (vista === 'semanal') {
         vistaDiaria.style.display = 'none';
         vistaSemanal.style.display = 'block';
         btnSemanal.classList.add('active');
         btnDiaria.classList.remove('active');
+        
+        inicializarAgendaSemanal();
+        cargarTurnosSemana(); // ¡Ahora sí está encendida!
     }
+}
+
+// LÓGICA DE TURNOS SEMANALES Y MODAL AGRUPADO
+async function cargarTurnosSemana() {
+    const inputFecha = document.getElementById('fechaAgendaInput');
+    if (!inputFecha || !inputFecha.value) return;
+
+    try {
+        // 1. Calculamos cuál es el Lunes de esta semana
+        const [año, mes, dia] = inputFecha.value.split('-');
+        const fechaElegida = new Date(año, mes - 1, dia);
+        
+        const diaSemanaActual = fechaElegida.getDay() || 7; 
+        const fechaLunes = new Date(fechaElegida);
+        fechaLunes.setDate(fechaElegida.getDate() - diaSemanaActual + 1);
+
+        // Limpiamos las celdas
+        document.querySelectorAll('.celda-semanal').forEach(celda => {
+            celda.innerHTML = '';
+            celda.turnosAgrupados = []; 
+        });
+
+        // 2. Buscamos los turnos día por día usando el endpoint que YA sabemos que funciona
+        const todosLosTurnos = [];
+        for (let i = 0; i < 6; i++) { // De Lunes a Sábado
+            const fechaDia = new Date(fechaLunes);
+            fechaDia.setDate(fechaLunes.getDate() + i);
+            
+            const fAño = fechaDia.getFullYear();
+            const fMes = String(fechaDia.getMonth() + 1).padStart(2, '0');
+            const fDia = String(fechaDia.getDate()).padStart(2, '0');
+            const fechaStr = `${fAño}-${fMes}-${fDia}`;
+
+            const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${fechaStr}`);
+            if (respuesta.ok) {
+                const turnosDia = await respuesta.json();
+                todosLosTurnos.push(...turnosDia); // Juntamos todo en una sola lista
+            }
+        }
+
+        // 3. Acomodamos cada turno en su celda
+        todosLosTurnos.forEach(turno => {
+            const fechaObj = new Date(turno.Fecha_Hora);
+            const diaSemana = fechaObj.getDay(); 
+            
+            const horas = fechaObj.getHours().toString().padStart(2, '0');
+            const minutos = fechaObj.getMinutes() < 30 ? '00' : '30';
+            const horaFormateada = `${horas}:${minutos}`;
+
+            const celda = document.getElementById(`celda-sem-${diaSemana}-${horaFormateada}`);
+            
+            if (celda) {
+                if (!celda.turnosAgrupados) celda.turnosAgrupados = [];
+                celda.turnosAgrupados.push(turno);
+            }
+        });
+
+        // 4. Dibujamos los botones
+        document.querySelectorAll('.celda-semanal').forEach(celda => {
+            const cantidad = celda.turnosAgrupados ? celda.turnosAgrupados.length : 0;
+            
+            if (cantidad > 0) {
+                const boton = document.createElement('button');
+                boton.style.width = '90%';
+                boton.style.padding = '5px';
+                boton.style.backgroundColor = '#fdf3e1';
+                boton.style.border = '1px solid #f6c23e';
+                boton.style.borderRadius = '6px';
+                boton.style.cursor = 'pointer';
+                boton.style.fontWeight = 'bold';
+                boton.style.color = '#d69e2e';
+                boton.style.fontSize = '12px';
+                boton.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                
+                // Usamos innerHTML en vez de textContent para poder inyectar el ícono SVG
+                boton.innerHTML = `
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="vertical-align: middle; margin-right: 4px; margin-bottom: 2px;">
+                        <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10z"/>
+                    </svg>
+                    ${cantidad} Turno${cantidad > 1 ? 's' : ''}
+                `;
+                
+                boton.onclick = () => abrirModalTurnosAgrupados(celda.turnosAgrupados);
+                celda.appendChild(boton);
+            }
+        });
+
+    } catch (error) {
+        console.error("Error inyectando turnos semanales:", error);
+    }
+}
+
+// Función para abrir la ventanita con el detalle y habilitar el cobro
+function abrirModalTurnosAgrupados(turnos) {
+    const modal = document.getElementById('modalTurnos');
+    const contenido = document.getElementById('contenidoModalTurnos');
+    const titulo = document.getElementById('tituloModalTurnos');
+    
+    contenido.innerHTML = ''; // Limpiamos el modal anterior
+    
+    // Armamos el título con la hora exacta
+    const fechaObj = new Date(turnos[0].Fecha_Hora);
+    const horas = fechaObj.getHours().toString().padStart(2, '0');
+    const minutos = fechaObj.getMinutes() < 30 ? '00' : '30';
+    titulo.textContent = `Turnos de las ${horas}:${minutos} hs`;
+
+    // Armamos una tarjetita bonita por cada turno agendado
+    turnos.forEach(turno => {
+        const tarjeta = document.createElement('div');
+        tarjeta.style.padding = '15px';
+        tarjeta.style.border = '1px solid #eee';
+        tarjeta.style.borderRadius = '8px';
+        tarjeta.style.borderLeft = `4px solid ${turno.Color || '#f6c23e'}`;
+        tarjeta.style.backgroundColor = '#fafafa';
+        
+        // 1. NUEVO: Le ponemos el cursor de manito para que sea clickeable
+        tarjeta.style.cursor = 'pointer'; 
+
+        // 2. NUEVO: Agregamos el evento click que abre el cobro
+        tarjeta.onclick = () => {
+            modal.style.display = 'none'; // Cerramos esta lista primero
+            
+            const precioServicio = turno.Precio_Base || 0; 
+            const senaPagada = turno.Sena_Monto || 0;
+            
+            // Llamamos a la función que ya tenías hecha
+            abrirModalDetalleTurno(
+                turno.Id_Turno, 
+                turno.Nombre_Clienta, 
+                turno.Nombre_Servicio, 
+                precioServicio,
+                turno.Estado, 
+                turno.Color,
+                senaPagada
+            );
+        };
+        
+        tarjeta.innerHTML = `
+            <div style="font-weight: bold; color: #333; margin-bottom: 8px; display: flex; justify-content: space-between;">
+                <span>${turno.Nombre_Clienta || 'Clienta'}</span>
+                <span style="font-size: 12px; font-weight: normal; background: #eee; padding: 2px 8px; border-radius: 10px;">${turno.Estado || 'Agendado'}</span>
+            </div>
+            
+            <div style="font-size: 13px; color: #666; margin-bottom: 6px; display: flex; align-items: center;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#d69e2e" style="margin-right: 6px;">
+                    <path d="M21.41 11.58l-9-9C12.05 2.22 11.55 2 11 2H4c-1.1 0-2 .9-2 2v7c0 .55.22 1.05.59 1.41l9 9c.36.36.86.58 1.41.58s1.05-.22 1.41-.59l7-7c.36-.36.59-.86.59-1.41s-.23-1.06-.59-1.41zM5.5 7C4.67 7 4 6.33 4 5.5S4.67 4 5.5 4 7 4.67 7 5.5 6.33 7 5.5 7z"/>
+                </svg>
+                ${turno.Nombre_Servicio || 'Servicio'}
+            </div>
+            
+            <div style="font-size: 13px; color: #999; display: flex; align-items: center;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="#999" style="margin-right: 6px;">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+                ${turno.Nombre_Ap || 'Profesional no asignada'} 
+            </div>
+        `;
+        
+        contenido.appendChild(tarjeta);
+    });
+    
+    modal.style.display = 'flex';
+}
+
+// AGENDA SEMANAL: Dibujar grilla y Modal
+function inicializarAgendaSemanal() {
+    const agendaBody = document.getElementById('agendaSemanalBody');
+    if (!agendaBody) return;
+    
+    agendaBody.innerHTML = ''; // Limpiamos por si había algo antes
+
+    const horaInicio = 9; 
+    const horaFin = 20;   
+
+    // Recorremos desde las 9 hasta las 20 hs
+    for (let hora = horaInicio; hora <= horaFin; hora++) {
+        let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
+        agendaBody.appendChild(crearFilaSemanal(stringHoraEnPunto));
+        
+        if (hora < horaFin) {
+            let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
+            agendaBody.appendChild(crearFilaSemanal(stringHoraMedia));
+        }
+    }
+}
+
+function crearFilaSemanal(hora) {
+    let fila = document.createElement('div');
+    fila.style.display = 'grid';
+    fila.style.gridTemplateColumns = '80px repeat(6, 1fr)'; // Igual que el header
+    fila.style.borderBottom = '1px solid #f0f0f0';
+
+    // 1. Columna de la hora
+    let htmlFila = `<div class="hora-col" style="padding: 10px; color: #666; text-align: center; border-right: 1px solid #eee;">${hora}</div>`;
+
+    // 2. Columnas de los 6 días (Lunes a Sábado)
+    for (let dia = 1; dia <= 6; dia++) {
+        // Le ponemos un id único a cada celda para encontrarla fácil después (ej: celda-sem-1-09:00)
+        htmlFila += `<div id="celda-sem-${dia}-${hora}" class="celda-semanal" style="padding: 5px; border-right: 1px solid #eee; min-height: 40px; display: flex; justify-content: center; align-items: center;"></div>`;
+    }
+    
+    fila.innerHTML = htmlFila;
+    return fila;
 }
 
 async function cargarTurnosAgenda() {
@@ -910,17 +1118,9 @@ async function cargarClientas() {
     try {
         const respuesta = await fetch('http://localhost:3000/api/clientas');
         const clientas = await respuesta.json();
-        
-        const selectTurno = document.getElementById('selectClientaTurno');
-        if (selectTurno) {
-            selectTurno.innerHTML = '<option value="">Seleccione una clienta...</option>';
-            clientas.forEach(clienta => {
-                const opcion = document.createElement('option');
-                opcion.value = clienta.Id_Clienta; 
-                opcion.textContent = `${clienta.Nombre} ${clienta.Apellido}`; 
-                selectTurno.appendChild(opcion);
-            });
-        }
+
+        // Guardamos las clientas en memoria para que el buscador rápido funcione
+        listaGlobalClientas = clientas;
 
         const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
         const tbodyLista = document.getElementById('tablaClientasBody');
@@ -935,6 +1135,7 @@ async function cargarClientas() {
             }
             const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
+            // 1. Armamos la tarjeta para la vista de cuadrícula
             const tarjetaHTML = `
                 <div class="card item-clienta-busqueda"> 
                     <div class="card-header">
@@ -949,19 +1150,20 @@ async function cargarClientas() {
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
-                        <!-- 1. Principal: Agendar Turno -->
+                        <!-- Principal: Agendar Turno -->
                         <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
                         
-                        <!-- 2. Secundario: Ver ficha -->
+                        <!-- Secundario: Ver ficha -->
                         <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
                         
-                        <!-- 3. Terciario: Editar -->
+                        <!-- Terciario: Editar -->
                         <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </div>
                 </div>
             `;
             if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
 
+            // 2. Armamos la fila para la vista de listado
             const filaHTML = `
                 <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
@@ -980,7 +1182,7 @@ async function cargarClientas() {
     } catch (error) {
         console.error("Error conectando con la API de clientas:", error);
     }
-}
+}   
 
 async function guardarClienta() {
     const idOculto = document.getElementById('idClientaOculto').value;
@@ -1048,6 +1250,65 @@ if (inputBuscador) {
     });
 }
 
+let listaGlobalClientas = []; // Guarda las clientas para buscar rápido
+
+// Lógica del buscador desplegable inteligente
+document.addEventListener('DOMContentLoaded', () => {
+    const inputBuscarClienta = document.getElementById('inputBuscarClientaTurno');
+    const dropdownClientas = document.getElementById('dropdownClientas');
+    const inputClientaOculto = document.getElementById('selectClientaTurno');
+
+    if (inputBuscarClienta) {
+        inputBuscarClienta.addEventListener('input', (e) => {
+            const texto = e.target.value.toLowerCase();
+            dropdownClientas.innerHTML = '';
+            
+            // Solo busca si escribiste 2 o más letras
+            if (texto.length < 2) {
+                dropdownClientas.style.display = 'none';
+                inputClientaOculto.value = ''; 
+                return;
+            }
+            
+            const filtradas = listaGlobalClientas.filter(c => 
+                c.Nombre.toLowerCase().includes(texto) || 
+                (c.Apellido && c.Apellido.toLowerCase().includes(texto))
+            );
+            
+            if (filtradas.length === 0) {
+                dropdownClientas.innerHTML = '<div style="padding: 10px; color: #888; font-size: 13px;">No se encontraron clientas...</div>';
+                dropdownClientas.style.display = 'block';
+                return;
+            }
+            
+            filtradas.forEach(c => {
+                const item = document.createElement('div');
+                item.style.padding = '10px';
+                item.style.cursor = 'pointer';
+                item.style.borderBottom = '1px solid #eee';
+                item.textContent = `${c.Nombre} ${c.Apellido || ''}`;
+                
+                item.onmouseover = () => item.style.backgroundColor = '#f8f9fa';
+                item.onmouseout = () => item.style.backgroundColor = 'white';
+                
+                item.onclick = () => {
+                    inputBuscarClienta.value = `${c.Nombre} ${c.Apellido || ''}`;
+                    inputClientaOculto.value = c.Id_Clienta;
+                    dropdownClientas.style.display = 'none';
+                };
+                dropdownClientas.appendChild(item);
+            });
+            dropdownClientas.style.display = 'block';
+        });
+
+        // Oculta la lista si hacen clic en otro lado
+        document.addEventListener('click', (e) => {
+            if(e.target !== inputBuscarClienta && e.target !== dropdownClientas) {
+                dropdownClientas.style.display = 'none';
+            }
+        });
+    }
+});
 
 // ==========================================================================
 // 5. MÓDULO DE EMPLEADAS

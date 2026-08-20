@@ -108,14 +108,43 @@
                     </div>
                 </div>
             </div>
-
+            
             <!-- VISTA 2: AGENDA SEMANAL -->
             <div id="vistaSemanal" style="display: none;">
-                <div style="background: white; border-radius: 12px; padding: 30px; text-align: center; color: #666; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                    <h3>Vista Semanal en construcción 🚧</h3>
-                    <p>Acá va a ir tu calendario de Lunes a Sábado.</p>
+                <!-- Grilla Semanal -->
+                <div class="agenda-container" style="background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto; max-height: 60vh;">
+                    <!-- Encabezado de Días -->
+                    <div id="agendaSemanalHeader" style="display: grid; grid-template-columns: 80px repeat(6, 1fr); background: #f8f9fa; border-bottom: 1px solid #eee; text-align: center; font-weight: 600; padding: 15px 0;">
+                        <div class="hora-col" style="color: #999;">Hora</div>
+                        <div>Lunes</div>
+                        <div>Martes</div>
+                        <div>Miércoles</div>
+                        <div>Jueves</div>
+                        <div>Viernes</div>
+                        <div>Sábado</div>
+                    </div>
+                    <!-- Cuerpo de la Agenda (Filas de horas) -->
+                    <div id="agendaSemanalBody">
+                        <!-- JavaScript inyectará las filas y los botones acá -->
+                    </div>
                 </div>
             </div>
+        <!-- ========================================== -->
+        <!-- MODAL DE TURNOS AGRUPADOS (Oculto por defecto) -->
+        <!-- ========================================== -->
+        <div id="modalTurnos" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center;">
+            <div style="background: white; padding: 25px; border-radius: 12px; width: 400px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+                <!-- Cabecera del Modal -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 id="tituloModalTurnos" style="margin: 0; color: #333;">Turnos agendados</h3>
+                    <button onclick="document.getElementById('modalTurnos').style.display='none'" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #999;">✖</button>
+                </div>
+                <!-- Lista de Detalles -->
+                <div id="contenidoModalTurnos" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- JavaScript inyectará las tarjetas de detalle acá adentro -->
+                </div>
+            </div>
+        </div>
         </div>
 
         <!-- 3.2. SECCIÓN: CLIENTAS -->
@@ -455,7 +484,16 @@
             <div class="form-group" id="grupoSeleccionClienta">
                 <label for="selectClientaTurno">Clienta</label>
                 <div style="display: flex; gap: 10px;">
-                    <select id="selectClientaTurno" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
+                    <!-- Buscador inteligente de clientas -->
+                    <div style="position: relative; flex-grow: 1;">
+                        <input type="text" id="inputBuscarClientaTurno" placeholder="Escribí 2 letras para buscar..." style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px;" autocomplete="off">
+                        <!-- Mantenemos el ID original escondido para no romper la lógica de guardar el turno -->
+                        <input type="hidden" id="selectClientaTurno"> 
+                        <!-- Esta es la ventanita flotante que aparecerá al escribir -->
+                        <div id="dropdownClientas" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; border-radius: 4px; max-height: 180px; overflow-y: auto; z-index: 2000; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+
+                        </div>
+                    </div>
                     <button type="button" id="btnNuevaClientaExpress" class="btn-secundario">+ Nueva</button>
                 </div>
             </div>
