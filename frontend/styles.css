@@ -525,3 +525,348 @@ body {
         transform: translateX(100%);
     }
 }
+
+/* =======================================================
+   SECCIÓN CONFIGURACIÓN
+======================================================== */
+.config-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.config-panel {
+    display: none;
+}
+
+.config-panel.config-panel-active {
+    display: block;
+}
+
+.config-card {
+    background: var(--blanco);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+}
+
+.config-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.config-card-title {
+    font-weight: 500;
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+
+.config-card-desc {
+    color: #666;
+    font-size: 14px;
+}
+
+.config-card-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.config-hint {
+    display: block;
+    font-size: 12px;
+    color: #999;
+    margin-top: 6px;
+}
+
+.config-hint-block {
+    margin-top: 16px;
+    padding: 12px 14px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #eee;
+}
+
+.config-input-readonly {
+    background-color: #f8f9fa !important;
+    color: #666;
+    cursor: default;
+}
+
+.config-textarea {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.config-textarea:focus {
+    border-color: var(--mostaza);
+}
+
+.config-card select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+    background: var(--blanco);
+}
+
+.config-card select:focus {
+    border-color: var(--mostaza);
+}
+
+.config-card input[type="time"],
+.config-card input[type="number"],
+.config-card input[type="tel"],
+.config-card input[type="text"] {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    outline: none;
+    font-family: inherit;
+}
+
+.config-card input:focus {
+    border-color: var(--mostaza);
+    box-shadow: 0 0 0 3px rgba(212, 163, 71, 0.15);
+}
+
+.config-inline-field {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.config-inline-field input {
+    width: 80px !important;
+    flex-shrink: 0;
+}
+
+.config-inline-field span {
+    font-size: 14px;
+    color: #555;
+    white-space: nowrap;
+}
+
+.config-badge {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.config-badge--ok {
+    background: #d4edda;
+    color: #155724;
+}
+
+.config-badge--pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.config-badge--error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.config-badge--off {
+    background: #e9ecef;
+    color: #6c757d;
+}
+
+.config-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.config-info-item {
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 14px 16px;
+}
+
+.config-info-label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.config-info-value {
+    font-size: 14px;
+    font-weight: 500;
+    color: #333;
+    word-break: break-word;
+}
+
+.config-preview {
+    margin-top: 20px;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.config-preview-label {
+    display: block;
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 10px;
+    font-weight: 500;
+}
+
+.config-preview-text {
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #444;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+.config-table-wrap {
+    overflow-x: auto;
+}
+
+.config-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.config-table thead tr {
+    background-color: #2c3e50;
+    color: white;
+}
+
+.config-table th {
+    padding: 12px 15px;
+}
+
+.config-table th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.config-table th:last-child {
+    border-radius: 0 8px 0 0;
+}
+
+.config-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.config-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.config-table-empty {
+    text-align: center;
+    color: #888;
+    padding: 30px !important;
+}
+
+.config-dias {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.config-dia {
+    padding: 8px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 20px;
+    background: transparent;
+    color: #666;
+    font-weight: 500;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.config-dia:hover {
+    border-color: var(--mostaza);
+    color: var(--mostaza);
+}
+
+.config-dia.active {
+    background-color: var(--mostaza);
+    color: white;
+    border-color: var(--mostaza);
+}
+
+.config-qr-container {
+    margin-top: 20px;
+    padding: 24px;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.config-qr-container canvas,
+.config-qr-img {
+    margin: 16px auto 8px;
+    display: block;
+    border-radius: 8px;
+    background: white;
+    padding: 8px;
+    max-width: 280px;
+    width: 100%;
+    height: auto;
+}
+
+.config-qr-estado {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+    padding: 16px 18px;
+    background: #fff8e6;
+    border: 1px solid #f0e0b0;
+    border-radius: 8px;
+    color: #856404;
+    font-size: 14px;
+}
+
+.config-qr-ok {
+    background: #d4edda !important;
+    border-color: #c3e6cb !important;
+    color: #155724 !important;
+    margin-top: 20px;
+}
+
+.config-qr-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #e0c878;
+    border-top-color: var(--mostaza);
+    border-radius: 50%;
+    animation: config-spin 0.8s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes config-spin {
+    to { transform: rotate(360deg); }
+}

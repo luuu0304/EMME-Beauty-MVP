@@ -1,10 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend EMME Beauty con recordatorios WhatsApp",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "migrate:recordatorio": "node scripts/migrate-recordatorio.js",
+    "install:chrome": "npx puppeteer browsers install chrome",
+    "whatsapp:reset": "pkill -f 'chrome.*wwebjs' 2>/dev/null; pkill -f 'session-emme-beauty' 2>/dev/null; rm -rf .wwebjs_auth .wwebjs_cache && echo 'Sesión borrada. Usá npm start y escaneá el QR.'"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +18,12 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mssql": "^12.5.5"
+    "mssql": "^12.5.5",
+    "node-cron": "^3.0.3",
+    "puppeteer": "^25.4.0",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.26.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
