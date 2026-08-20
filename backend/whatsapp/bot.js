@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { execFileSync } = require('child_process');
 const cron = require('node-cron');
 const qrcode = require('qrcode-terminal');
 const pkg = require('whatsapp-web.js');
@@ -84,24 +85,53 @@ function generarCandidatos(telefono) {
     return candidatos;
 }
 
+function chromeEsUsable(binario) {
+    if (!binario || !fs.existsSync(binario)) return false;
+    try {
+        execFileSync(binario, ['--version'], { timeout: 8000, stdio: 'pipe' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function chromeDesdeCache(cacheRoot) {
+    if (!cacheRoot) return null;
+    const cacheBase = path.join(cacheRoot, 'chrome');
+    if (!fs.existsSync(cacheBase)) return null;
+
+    const versions = fs.readdirSync(cacheBase).sort().reverse();
+    for (const version of versions) {
+        const candidatos = [
+            path.join(cacheBase, version, 'chrome-linux64', 'chrome'),
+            path.join(cacheBase, version, 'chrome-mac-arm64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'),
+            path.join(cacheBase, version, 'chrome-mac-x64', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'),
+            path.join(cacheBase, version, 'chrome-mac', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing'),
+            path.join(cacheBase, version, 'chrome-win64', 'chrome.exe')
+        ];
+        const encontrado = candidatos.find(chromeEsUsable);
+        if (encontrado) return encontrado;
+    }
+
+    return null;
+}
+
 function resolverChromePath() {
-    if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) {
-        return process.env.CHROME_PATH;
-    }
+    const candidatos = [
+        process.env.CHROME_PATH,
+        chromeDesdeCache(path.join(os.homedir(), '.cache', 'puppeteer')),
+        chromeDesdeCache(process.env.PUPPETEER_CACHE_DIR || ''),
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+        '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+    ].filter(Boolean);
 
-    const cacheBase = path.join(os.homedir(), '.cache', 'puppeteer', 'chrome');
-    if (fs.existsSync(cacheBase)) {
-        const versions = fs.readdirSync(cacheBase).sort().reverse();
-        for (const version of versions) {
-            const linuxPath = path.join(cacheBase, version, 'chrome-linux64', 'chrome');
-            if (fs.existsSync(linuxPath)) return linuxPath;
-            const macPath = path.join(cacheBase, version, 'chrome-mac', 'Google Chrome for Testing.app', 'Contents', 'MacOS', 'Google Chrome for Testing');
-            if (fs.existsSync(macPath)) return macPath;
-            const winPath = path.join(cacheBase, version, 'chrome-win64', 'chrome.exe');
-            if (fs.existsSync(winPath)) return winPath;
-        }
-    }
+    const encontrado = candidatos.find(chromeEsUsable);
+    if (encontrado) return encontrado;
 
+    console.warn('[WhatsApp] No se encontró un Chrome usable. Instalá Chrome o corré: npm run install:chrome');
     return undefined;
 }
 
@@ -290,17 +320,29 @@ function iniciarCron() {
 
 function crearCliente() {
     const chromePath = resolverChromePath();
+    const puppeteerConfig = {
+        headless: true,
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--no-first-run',
+            '--no-default-browser-check'
+        ]
+    };
+
+    if (chromePath) {
+        puppeteerConfig.executablePath = chromePath;
+        console.log('[WhatsApp] Usando Chrome:', chromePath);
+    }
 
     return new Client({
         authStrategy: new LocalAuth({
             clientId: 'emme-beauty',
             dataPath: path.join(backendRoot, '.wwebjs_auth')
         }),
-        puppeteer: {
-            headless: true,
-            executablePath: chromePath,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
-        },
+        puppeteer: puppeteerConfig,
         webVersionCache: {
             type: 'remote',
             remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1014590669-alpha.html'
