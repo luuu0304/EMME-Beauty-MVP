@@ -473,7 +473,7 @@ async function guardarTurno() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
             cerrarModalTurno();
-            setTimeout(() => { location.reload(); }, 1200);
+            refrescarAgenda();
         } else {
             const mensajeError = await respuesta.text();
             mostrarNotificacion(`Error: ${mensajeError}`, "error");
@@ -714,7 +714,7 @@ async function cargarTurnosSemana() {
             const fDia = String(fechaDia.getDate()).padStart(2, '0');
             const fechaStr = `${fAño}-${fMes}-${fDia}`;
 
-            const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${fechaStr}`);
+            const respuesta = await fetch(`${API_BASE}/turnos/fecha/${fechaStr}`);
             if (respuesta.ok) {
                 const turnosDia = await respuesta.json();
                 todosLosTurnos.push(...turnosDia); // Juntamos todo en una sola lista
@@ -884,6 +884,14 @@ function crearFilaSemanal(hora) {
     
     fila.innerHTML = htmlFila;
     return fila;
+}
+
+function refrescarAgenda() {
+    cargarTurnosAgenda();
+    const vistaSemanal = document.getElementById('vistaSemanal');
+    if (vistaSemanal && vistaSemanal.style.display !== 'none') {
+        cargarTurnosSemana();
+    }
 }
 
 async function cargarTurnosAgenda() {
@@ -2175,9 +2183,16 @@ async function guardarDetallesTurno() {
         
         if (respuesta.ok) {
             mostrarNotificacion("¡Color agregado!", "success");
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            const contenedorColores = document.getElementById('listaColoresGuardados');
+            if (contenedorColores) {
+                contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${colorElegido}</span>`;
+            }
+            document.getElementById('colorTurnoInput').value = '';
+            const badgeEstado = document.getElementById('estadoTurnoBadge');
+            if (badgeEstado && badgeEstado.textContent === 'Pendiente') {
+                badgeEstado.textContent = 'En progreso';
+            }
+            refrescarAgenda();
         } else {
             mostrarNotificacion("Hubo un error al guardar.", "error");
         }
@@ -2306,10 +2321,7 @@ async function confirmarCobroTurno() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Cobro registrado con éxito!", "success"); 
             cerrarModalDetalleTurno();
-
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            refrescarAgenda();
         } else {
             mostrarNotificacion("Hubo un error al intentar cobrar.", "error");
         }
