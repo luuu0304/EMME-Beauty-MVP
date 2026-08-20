@@ -1,5 +1,2 @@
 node_modules/
-.env
-.wwebjs_auth/
-.wwebjs_cache/
-backend/data/demo-store.json
+backend/node_modules/

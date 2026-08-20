@@ -1,5 +1,16 @@
-// Backend API — puerto 7777 (ver backend/.env)
-const API_BASE = 'http://localhost:7777/api';
+// ==========================================================================
+// ÍNDICE DEL DOCUMENTO
+// 1. UTILIDADES GLOBALES Y NOTIFICACIONES
+// 2. NAVEGACIÓN Y MENÚ LATERAL
+// 3. MÓDULO DE TURNOS Y CALENDARIO
+// 4. MÓDULO DE CLIENTAS (Incluye Perfil e Historial)
+// 5. MÓDULO DE EMPLEADAS
+// 6. MÓDULO DE GASTOS
+// 7. MÓDULO DE INGRESOS
+// 8. MÓDULO DE COBRO Y EXTRAS
+// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
+// ==========================================================================
+
 
 // ==========================================================================
 // 1. UTILIDADES GLOBALES Y NOTIFICACIONES
@@ -29,13 +40,54 @@ window.addEventListener('DOMContentLoaded', () => {
     cargarClientas();
     cargarEmpleadas();
     cargarServicios();
-    cargarCategoriasGasto()
-    cargarExtrasDisponibles()
+    cargarCategoriasGasto();
+    cargarExtrasDisponibles();
     inicializarFechaAgenda();
     inicializarAgendaDiaria();
+    cargarDatosDashboard()
+    
+    // Leer el anotador al arrancar
+    const seccionGuardada = localStorage.getItem('emme_seccion_activa');
+    if (seccionGuardada) {
+        // Buscamos el botón que tenga ese mismo texto y le hacemos un "clic fantasma"
+        const botonSeleccionado = Array.from(botonesMenu).find(b => b.textContent.trim() === seccionGuardada);
+        if (botonSeleccionado) {
+            botonSeleccionado.click();
+        }
+    }
+    // 📅 Inicializar el calendario de rango (Flatpickr)
+    const inputRango = document.getElementById('rangoFechasCustomDash');
+    if (inputRango) {
+        flatpickr(inputRango, {
+            mode: "range",
+            locale: "es", 
+            dateFormat: "Y-m-d", 
+            onChange: function(selectedDates, dateStr, instance) {
+                // Cuando eligen LAS DOS fechas, llamamos al servidor
+                if (selectedDates.length === 2) {
+                    const desde = formatoFechaSQL(selectedDates[0]);
+                    const hasta = formatoFechaSQL(selectedDates[1]);
+                    cargarDatosDashboard(desde, hasta); 
+                }
+            }
+        });
+    }
+
+    // Lógica del desplegable
+    const selectFiltroDash = document.getElementById('filtroRapidoDash');
+    if (selectFiltroDash) {
+        selectFiltroDash.addEventListener('change', (e) => {
+            if (e.target.value === 'personalizado') {
+                inputRango.style.display = 'block';
+            } else {
+                inputRango.style.display = 'none';
+                cargarDatosDashboard(); // Si elige un rango rápido, carga de nuevo
+            }
+        });
+    }
 });
 
-// --- Sistema de Confirmación Personalizado (Promesa) ---
+// Sistema de Confirmación Personalizado (Promesa)
 function pedirConfirmacion(mensaje) {
     return new Promise((resolve) => {
         const modalConf = document.getElementById('modalConfirmacion');
@@ -43,19 +95,14 @@ function pedirConfirmacion(mensaje) {
         const btnAceptar = document.getElementById('btnAceptarConfirmacion');
         const btnCancelar = document.getElementById('btnCancelarConfirmacion');
 
-        // Ponemos el texto que queramos mostrar
         textoConf.textContent = mensaje;
-        
-        // Mostramos el modal
         modalConf.classList.add('active');
 
-        // Si toca aceptar, cerramos el modal y devolvemos "true"
         btnAceptar.onclick = () => {
             modalConf.classList.remove('active');
             resolve(true);
         };
 
-        // Si toca cancelar, cerramos y devolvemos "false"
         btnCancelar.onclick = () => {
             modalConf.classList.remove('active');
             resolve(false);
@@ -63,8 +110,68 @@ function pedirConfirmacion(mensaje) {
     });
 }
 
+// ---------------------------------------------------------
+    // LÓGICA DE FILTROS ESTANDARIZADOS (Gastos e Ingresos)
+    // ---------------------------------------------------------
+
+    // Inicializar Flatpickr para Gastos
+    const inputRangoGastos = document.getElementById('rangoFechaGastos');
+    if (inputRangoGastos) {
+        flatpickr(inputRangoGastos, {
+            mode: "range",
+            locale: "es",
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) aplicarFiltrosGastos(); // Llama a tu función de filtrado
+            }
+        });
+    }
+
+    // Alternar vista de filtros en Gastos
+    const modoGastos = document.getElementById('modoFechaGastos');
+    if (modoGastos) {
+        modoGastos.addEventListener('change', (e) => {
+            if (e.target.value === 'rango') {
+                document.getElementById('contenedorMesGastos').style.display = 'none';
+                inputRangoGastos.style.display = 'block';
+            } else {
+                document.getElementById('contenedorMesGastos').style.display = 'flex';
+                inputRangoGastos.style.display = 'none';
+                aplicarFiltrosGastos(); // Recalcula si volvemos a "Mes"
+            }
+        });
+    }
+
+    // Inicializar Flatpickr para Ingresos
+    const inputRangoIngresos = document.getElementById('rangoFechaIngresos');
+    if (inputRangoIngresos) {
+        flatpickr(inputRangoIngresos, {
+            mode: "range",
+            locale: "es",
+            dateFormat: "Y-m-d",
+            onChange: function(selectedDates) {
+                if (selectedDates.length === 2) filtrarIngresos(); // Llama a tu función de filtrado
+            }
+        });
+    }
+
+    // Alternar vista de filtros en Ingresos
+    const modoIngresos = document.getElementById('modoFechaIngresos');
+    if (modoIngresos) {
+        modoIngresos.addEventListener('change', (e) => {
+            if (e.target.value === 'rango') {
+                document.getElementById('contenedorMesIngresos').style.display = 'none';
+                inputRangoIngresos.style.display = 'block';
+            } else {
+                document.getElementById('contenedorMesIngresos').style.display = 'flex';
+                inputRangoIngresos.style.display = 'none';
+                filtrarIngresos(); // Recalcula si volvemos a "Mes"
+            }
+        });
+    }
+
 // ==========================================================================
-// 2. NAVEGACIÓN Y MENÚ LATERAL
+// 2. NAVEGACIÓN, MENÚ LATERAL Y PERSISTENCIA DE ESTADO
 // ==========================================================================
 
 const botonesMenu = document.querySelectorAll('.menu-item');
@@ -72,40 +179,45 @@ const seccionTurnos = document.getElementById('seccionTurnos');
 const seccionClientas = document.getElementById('seccionClientas');
 const seccionEmpleados = document.getElementById('seccionEmpleados');
 const seccionGastos = document.getElementById('seccionGastos');
-const seccionIngresos = document.getElementById('seccionIngresos'); 
-const seccionConfiguracion = document.getElementById('seccionConfiguracion');
+const seccionIngresos = document.getElementById('seccionIngresos');
+const seccionResumenes = document.getElementById('seccionResumenes');
 
 const tituloHeader = document.querySelector('.header h1');
 const btnNuevoTurno = document.getElementById('btnNuevoTurno');
 const btnNuevaClienta = document.getElementById('btnNuevaClienta');
 const buscadorClientas = document.getElementById('buscadorClientas');
+const buscadorEmpleadas = document.getElementById('buscadorEmpleadas');
 const btnNuevaEmpleada = document.getElementById('btnNuevaEmpleada');
 const btnNuevoGasto = document.getElementById('btnNuevoGasto');
+const btnNuevoIngreso = document.getElementById('btnNuevoIngreso');
 
+// Función principal del menú
 botonesMenu.forEach(boton => {
     boton.addEventListener('click', () => {
-        // 1. Cambiar la pestaña activa en el menú lateral
         botonesMenu.forEach(b => b.classList.remove('active'));
         boton.classList.add('active');
 
-        // 2. Ocultar TODAS las secciones centrales
         seccionTurnos.style.display = 'none';
         seccionClientas.style.display = 'none';
         seccionEmpleados.style.display = 'none';
         seccionGastos.style.display = 'none';
-        // 2.1 Ocultamos la nueva sección
-        if(seccionIngresos) seccionIngresos.style.display = 'none'; 
-        if(seccionConfiguracion) seccionConfiguracion.style.display = 'none';
+        if(seccionIngresos) seccionIngresos.style.display = 'none';
+        if(seccionResumenes) seccionResumenes.style.display = 'none';
 
-        // 3. APAGAR TODOS LOS BOTONES SUPERIORES POR DEFECTO
         btnNuevoTurno.style.display = 'none';
         btnNuevaClienta.style.display = 'none';
         btnNuevaEmpleada.style.display = 'none';
         btnNuevoGasto.style.display = 'none';
         buscadorClientas.style.display = 'none';
+        if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'none';
+        
+        // CORRECCIÓN: Ahora sí se oculta al cambiar de sección
+        if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'none'; 
 
-        // 4. Prender solo lo que corresponde según la pestaña
         const opcionSeleccionada = boton.textContent.trim();
+
+        // 🧠 MAGIA DE LA MASTER CLASS: Guardamos dónde hizo clic el usuario
+        localStorage.setItem('emme_seccion_activa', opcionSeleccionada);
 
         if (opcionSeleccionada === 'Turnos') {
             seccionTurnos.style.display = 'block';
@@ -123,6 +235,7 @@ botonesMenu.forEach(boton => {
             seccionEmpleados.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Empleados';
             btnNuevaEmpleada.style.display = 'block'; 
+            if (buscadorEmpleadas) buscadorEmpleadas.style.display = 'block';
             cargarEmpleadas();
 
         } else if (opcionSeleccionada === 'Gastos') {
@@ -131,25 +244,39 @@ botonesMenu.forEach(boton => {
             btnNuevoGasto.style.display = 'block'; 
             cargarGastos(); 
             
-        // 4.1 Agregamos la lógica para la pestaña de Ingresos
         } else if (opcionSeleccionada === 'Ingresos') {
             if(seccionIngresos) seccionIngresos.style.display = 'block';
             tituloHeader.textContent = 'Gestión de Ingresos';
+            if (btnNuevoIngreso) btnNuevoIngreso.style.display = 'block'; // <-- AGREGAR ESTO
             cargarIngresos();
-
-        } else if (opcionSeleccionada === 'Configuración') {
-            if(seccionConfiguracion) seccionConfiguracion.style.display = 'block';
-            tituloHeader.textContent = 'Configuración del Sistema';
-            cargarSeccionConfiguracion();
+        } else if (opcionSeleccionada === 'Resúmenes') {
+            if(seccionResumenes) seccionResumenes.style.display = 'block';
+            tituloHeader.textContent = 'Panel de Control';
         }
     });
 });
+
+// Lógica del buscador de empleadas
+if (buscadorEmpleadas) {
+    buscadorEmpleadas.addEventListener('input', function(e) {
+        const textoBuscado = e.target.value.toLowerCase();
+        const tarjetas = document.querySelectorAll('#contenedorEmpleadas .card');
+        
+        tarjetas.forEach(tarjeta => {
+            const nombre = tarjeta.querySelector('h3').textContent.toLowerCase();
+            if (nombre.includes(textoBuscado)) {
+                tarjeta.style.display = '';
+            } else {
+                tarjeta.style.display = 'none';
+            }
+        });
+    });
+}
 
 // ==========================================================================
 // 3. MÓDULO DE TURNOS Y CALENDARIO
 // ==========================================================================
 
-// --- Calendario (FullCalendar) ---
 document.addEventListener('DOMContentLoaded', function() {
     const calendarEl = document.getElementById('calendario');
     
@@ -166,14 +293,13 @@ document.addEventListener('DOMContentLoaded', function() {
             slotMinTime: '09:30:00', 
             slotMaxTime: '21:30:00', 
             allDaySlot: false, 
-            events: 'http://localhost:7777/api/turnos',
+            events: 'http://localhost:3000/api/turnos',
             eventColor: 'var(--mostaza)'
         });
         calendar.render();
     }
 });
 
-// --- Modal de Turnos ---
 const modalTurno = document.getElementById('modalNuevoTurno');
 
 function abrirModalTurno() {
@@ -190,14 +316,12 @@ if (modalTurno) {
     });
 }
 
-// --- Bloquear días pasados en el calendario de turnos ---
 const inputFechaTurno = document.getElementById('fechaTurnoInput');
 if (inputFechaTurno) {
     const hoy = new Date().toISOString().split('T')[0];
     inputFechaTurno.setAttribute('min', hoy);
 }
 
-// --- Lógica Clienta Express en Turnos ---
 const btnNuevaExpress = document.getElementById('btnNuevaClientaExpress');
 const btnCancelarExpress = document.getElementById('btnCancelarExpress');
 const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
@@ -221,50 +345,90 @@ if (btnCancelarExpress) {
     });
 }
 
-// --- Guardar Turno ---
-async function guardarTurno() {
-    let idClientaFinal;
-
-    if (grupoExpress.style.display === 'block' || grupoExpress.style.display === '') {
-        const nombreExp = inputNombreExpress.value.trim();
-        const apellidoExp = inputApellidoExpress.value.trim();
-        
-        if (!nombreExp || !apellidoExp) {
-            mostrarNotificacion("Por favor, completá nombre y apellido.", "warning");
-            return; 
-        }
-        try {
-        const respuesta = await fetch('http://localhost:7777/api/turnos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(nuevoTurno)
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
-            cerrarModalTurno();
-            location.reload();
-        } else {
-            // AHORA LEEMOS EL MENSAJE DEL BACKEND
-            const mensajeError = await respuesta.text();
-            // Mostramos el mensaje exacto que nos devolvió SQL/Node
-            mostrarNotificacion(`Ups: ${mensajeError}`, "error");
-        }
-    } catch (error) {
-        console.error("Error enviando el turno:", error);
-        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+async function filtrarProfesionalesPorServicio() {
+    const idServicio = document.getElementById('servicioTurno').value;
+    const selectEmpleada = document.getElementById('empleadaTurno');
+    
+    if (!idServicio) {
+        selectEmpleada.innerHTML = '<option value="">Elegí el servicio primero...</option>';
+        selectEmpleada.disabled = true;
+        selectEmpleada.style.backgroundColor = "#f8f9fa";
+        return;
     }
 
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/servicio/${idServicio}`);
+        const empleadasHabilitadas = await respuesta.json();
+        
+        selectEmpleada.innerHTML = '<option value="">Seleccioná a la profesional...</option>';
+        
+        if (empleadasHabilitadas.length === 0) {
+            selectEmpleada.innerHTML = '<option value="">Ninguna profesional habilitada</option>';
+            selectEmpleada.disabled = true;
+            return;
+        }
+
+        empleadasHabilitadas.forEach(emp => {
+            const opcion = document.createElement('option');
+            opcion.value = emp.Id_Empleada;
+            opcion.textContent = `${emp.Nombre} ${emp.Apellido}`;
+            selectEmpleada.appendChild(opcion);
+        });
+        
+        selectEmpleada.disabled = false;
+        selectEmpleada.style.backgroundColor = "#ffffff";
+        
+    } catch (error) {
+        console.error("Error al buscar profesionales:", error);
+    }
+}
+
+async function guardarTurno() {
+    let idClientaFinal;
+    const grupoExpress = document.getElementById('grupoClientaExpress');
+
+    if (grupoExpress && (grupoExpress.style.display === 'block' || grupoExpress.style.display === '')) {
+        const inputNombreExpress = document.getElementById('nombreExpress');
+        const inputApellidoExpress = document.getElementById('apellidoExpress');
+        
+        const nombreExp = inputNombreExpress ? inputNombreExpress.value.trim() : '';
+        const apellidoExp = inputApellidoExpress ? inputApellidoExpress.value.trim() : '';
+        
+        if (!nombreExp || !apellidoExp) {
+            mostrarNotificacion("Por favor, completá nombre y apellido de la nueva clienta.", "warning");
+            return; 
+        }
+        
+        try {
+            const respuestaClienta = await fetch('http://localhost:3000/api/clientas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Nombre: nombreExp, Apellido: apellidoExp, Telefono: "", Email: "" })
+            });
+
+            if (respuestaClienta.ok) {
+                const dataClienta = await respuestaClienta.json();
+                idClientaFinal = dataClienta.id || dataClienta.Id_Clienta; 
+            } else {
+                mostrarNotificacion("Hubo un error al registrar la clienta nueva.", "error");
+                return;
+            }
+        } catch (error) {
+            console.error("Error creando clienta:", error);
+            mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+            return;
+        }
     } else {
-        idClientaFinal = document.getElementById('selectClientaTurno').value;
+        const selectClienta = document.getElementById('selectClientaTurno');
+        idClientaFinal = selectClienta ? selectClienta.value : null;
         if (!idClientaFinal) {
             mostrarNotificacion("Por favor, seleccioná una clienta de la lista.", "warning");
             return;
         }
     }
 
-    const idEmpleada = document.getElementById('selectEmpleadaTurno').value;
-    const idServicio = document.getElementById('selectServicioTurno').value;
+    const idServicio = document.getElementById('servicioTurno').value;
+    const idEmpleada = document.getElementById('empleadaTurno').value;
     const fecha = document.getElementById('fechaTurnoInput').value;
     const hora = document.getElementById('horaTurnoInput').value;
 
@@ -273,22 +437,25 @@ async function guardarTurno() {
         return;
     }
 
-    // Validación de horario
     if (hora < "09:30" || hora > "21:30") {
         mostrarNotificacion("Por favor, ingresá un horario dentro de la franja de atención (09:30 a 21:30 hs).", "warning");
         return;
     }
+
+    const inputSenaTurno = document.getElementById('senaTurnoInput');
+    const montoSena = inputSenaTurno && inputSenaTurno.value ? parseFloat(inputSenaTurno.value) : 0;
 
     const fechaHoraCompleta = `${fecha}T${hora}:00`;
     const nuevoTurno = {
         Id_Clienta: parseInt(idClientaFinal), 
         Id_Empleada: parseInt(idEmpleada),
         Id_Servicio: parseInt(idServicio),
-        Fecha_Hora: fechaHoraCompleta
+        Fecha_Hora: fechaHoraCompleta,
+        Sena_Monto: montoSena 
     };
 
     try {
-        const respuesta = await fetch('http://localhost:7777/api/turnos', {
+        const respuesta = await fetch('http://localhost:3000/api/turnos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoTurno)
@@ -297,9 +464,10 @@ async function guardarTurno() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Turno agendado con éxito! 📅✨", "success");
             cerrarModalTurno();
-            location.reload();
+            setTimeout(() => { location.reload(); }, 1200);
         } else {
-            mostrarNotificacion("Hubo un error al guardar el turno en el servidor.", "error");
+            const mensajeError = await respuesta.text();
+            mostrarNotificacion(`Error: ${mensajeError}`, "error");
         }
     } catch (error) {
         console.error("Error enviando el turno:", error);
@@ -307,9 +475,7 @@ async function guardarTurno() {
     }
 }
 
-// --- Atajo: Agendar turno desde la tarjeta de Clienta ---
 function agendarTurnoRapido(idClienta) {
-    // 1. Nos aseguramos de que el selector clásico esté visible (y el express oculto)
     const grupoSeleccion = document.getElementById('grupoSeleccionClienta');
     const grupoExpress = document.getElementById('grupoClientaExpress');
     
@@ -318,25 +484,22 @@ function agendarTurnoRapido(idClienta) {
         grupoSeleccion.style.display = 'block';
     }
 
-    // 2. Buscamos el desplegable y le asignamos mágicamente el ID de la clienta
     const selectClienta = document.getElementById('selectClientaTurno');
     if (selectClienta) {
         selectClienta.value = idClienta;
     }
 
-    // 3. Abrimos el modal de turnos
     abrirModalTurno();
 }
 
-// --- Cargar Servicios en el desplegable de Turnos ---
 async function cargarServicios() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/servicios');
+        const respuesta = await fetch('http://localhost:3000/api/servicios');
         const servicios = await respuesta.json();
         
-        const selectServicio = document.getElementById('selectServicioTurno');
+        const selectServicio = document.getElementById('servicioTurno');
         if (selectServicio) {
-            selectServicio.innerHTML = '<option value="">Seleccione...</option>';
+            selectServicio.innerHTML = '<option value="">Seleccione un servicio...</option>';
             
             servicios.forEach(servicio => {
                 const opcion = document.createElement('option');
@@ -350,49 +513,42 @@ async function cargarServicios() {
     }
 }
 
-// --- Inicializar y dibujar la Agenda Diaria ---
 async function inicializarAgendaDiaria() {
     try {
-        // 1. Buscamos a las profesionales en la base de datos
-        const respuesta = await fetch('http://localhost:7777/api/empleadas');
+        const respuesta = await fetch('http://localhost:3000/api/empleadas');
         const empleadas = await respuesta.json();
 
-        // 2. Dibujamos el Encabezado (Los nombres arriba)
         const agendaHeader = document.getElementById('agendaHeader');
         if (agendaHeader) {
             agendaHeader.innerHTML = '<div class="hora-col">Hora</div>';
             empleadas.forEach(emp => {
-                // Asumimos que la columna de tu tabla se llama Nombre_Ap
-                agendaHeader.innerHTML += `<div style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
+                agendaHeader.innerHTML += `<div class="col-emp-${emp.Id_Empleada}" data-areas="${emp.Areas || ''}" style="font-weight: 600; color: #333;">${emp.Nombre_Ap}</div>`;
             });
         }
 
-        // 3. Dibujamos el Cuerpo (Las filas de 30 min y las celdas vacías)
         const agendaBody = document.getElementById('agendaBody');
         if (!agendaBody) return;
         
         agendaBody.innerHTML = ''; 
         
-        const horaInicio = 9; // 09:00 hs
-        const horaFin = 20;   // 20:00 hs
+        const horaInicio = 9; 
+        const horaFin = 20;   
         
         for (let hora = horaInicio; hora <= horaFin; hora++) {
-            // --- Bloque de la hora en punto (XX:00) ---
             let stringHoraEnPunto = hora.toString().padStart(2, '0') + ':00';
             let filaEnPunto = document.createElement('div');
             filaEnPunto.className = 'agenda-row hora-en-punto';
             
             let htmlFilaEnPunto = `<div class="hora-col">${stringHoraEnPunto}</div>`;
             
-            // Creamos un "cuadradito" vacío por cada profesional para esta hora
             empleadas.forEach(emp => {
-                htmlFilaEnPunto += `<div class="agenda-celda" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+                // CAMBIO ACÁ: Agregamos la clase col-emp-${emp.Id_Empleada}
+                htmlFilaEnPunto += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraEnPunto}" data-id-empleada="${emp.Id_Empleada}"></div>`;
             });
             
             filaEnPunto.innerHTML = htmlFilaEnPunto;
             agendaBody.appendChild(filaEnPunto);
             
-            // --- Bloque de la media hora (XX:30) ---
             if (hora < horaFin) {
                 let stringHoraMedia = hora.toString().padStart(2, '0') + ':30';
                 let filaMediaHora = document.createElement('div');
@@ -400,28 +556,24 @@ async function inicializarAgendaDiaria() {
                 
                 let htmlFilaMedia = `<div class="hora-col">${stringHoraMedia}</div>`;
                 
-                // Creamos un "cuadradito" vacío por cada profesional para esta media hora
                 empleadas.forEach(emp => {
-                    htmlFilaMedia += `<div class="agenda-celda" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
+                    htmlFilaMedia += `<div class="agenda-celda col-emp-${emp.Id_Empleada}" data-hora="${stringHoraMedia}" data-id-empleada="${emp.Id_Empleada}"></div>`;
                 });
                 
                 filaMediaHora.innerHTML = htmlFilaMedia;
                 agendaBody.appendChild(filaMediaHora);
             }
         }
-        // 4. Escuchar los cambios de fecha (Input manual y Flechas)
+        
         const inputFecha = document.getElementById('fechaAgendaInput');
         const btnAnterior = document.getElementById('btnDiaAnterior');
         const btnSiguiente = document.getElementById('btnDiaSiguiente');
 
         if (inputFecha) {
-            // Si elige la fecha en el calendario del input
             inputFecha.addEventListener('change', cargarTurnosAgenda);
             
-            // Flecha para ATRÁS
             if (btnAnterior) {
                 btnAnterior.addEventListener('click', () => {
-                    // El 'T00:00:00' evita que el navegador se confunda con la zona horaria
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
                     fechaActual.setDate(fechaActual.getDate() - 1);
                     
@@ -430,11 +582,10 @@ async function inicializarAgendaDiaria() {
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
                     
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                    cargarTurnosAgenda(); 
                 });
             }
 
-            // Flecha para ADELANTE
             if (btnSiguiente) {
                 btnSiguiente.addEventListener('click', () => {
                     const fechaActual = new Date(inputFecha.value + 'T00:00:00');
@@ -445,23 +596,51 @@ async function inicializarAgendaDiaria() {
                     const dd = String(fechaActual.getDate()).padStart(2, '0');
                     
                     inputFecha.value = `${yyyy}-${mm}-${dd}`;
-                    cargarTurnosAgenda(); // Inyectamos los turnos del nuevo día
+                    cargarTurnosAgenda(); 
                 });
             }
         }
 
-        // 5. Cargar los turnos del día de hoy por primera vez
         cargarTurnosAgenda();
     } catch (error) {
         console.error("Error al cargar la agenda diaria:", error);
     }
 }
 
-// --- Poner la fecha de hoy por defecto al cargar ---
+// NUEVA FUNCIÓN: Filtrar agenda al tocar los botones
+function filtrarAgendaPorArea(areaSeleccionada, botonClickeado) {
+    // 1. Efecto visual: despintar todos y pintar el seleccionado
+    document.querySelectorAll('.filtro-btn').forEach(btn => {
+        btn.style.background = 'white';
+        btn.style.border = '1px solid #ccc';
+    });
+    botonClickeado.style.background = '#e2e3e5';
+    botonClickeado.style.border = 'none';
+
+    // 2. Buscar todas las columnas del encabezado
+    const headers = document.querySelectorAll('#agendaHeader > div:not(.hora-col)');
+
+    headers.forEach(header => {
+        const areasDeLaChica = header.getAttribute('data-areas');
+        
+        // Averiguar la clase que identifica a esta chica (ej. "col-emp-2")
+        const claseColumna = Array.from(header.classList).find(c => c.startsWith('col-emp-'));
+        const celdasDeLaChica = document.querySelectorAll(`.${claseColumna}`);
+
+        // 3. Mostrar u ocultar dependiendo de si hace el servicio
+        if (areaSeleccionada === 'Todo' || (areasDeLaChica && areasDeLaChica.includes(areaSeleccionada))) {
+            header.style.display = ''; 
+            celdasDeLaChica.forEach(celda => celda.style.display = ''); 
+        } else {
+            header.style.display = 'none';
+            celdasDeLaChica.forEach(celda => celda.style.display = 'none');
+        }
+    });
+}
+
 function inicializarFechaAgenda() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (inputFecha) {
-        // Obtenemos la fecha actual y la formateamos a YYYY-MM-DD
         const hoy = new Date();
         const yyyy = hoy.getFullYear();
         const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -471,7 +650,6 @@ function inicializarFechaAgenda() {
     }
 }
 
-// --- Alternar entre Vista Diaria y Semanal ---
 function cambiarVistaAgenda(vista) {
     const vistaDiaria = document.getElementById('vistaDiaria');
     const vistaSemanal = document.getElementById('vistaSemanal');
@@ -481,49 +659,39 @@ function cambiarVistaAgenda(vista) {
     if (vista === 'diaria') {
         vistaDiaria.style.display = 'block';
         vistaSemanal.style.display = 'none';
-        
         btnDiaria.classList.add('active');
         btnSemanal.classList.remove('active');
     } else {
         vistaDiaria.style.display = 'none';
         vistaSemanal.style.display = 'block';
-        
         btnSemanal.classList.add('active');
         btnDiaria.classList.remove('active');
     }
 }
 
-// --- Cargar y dibujar los turnos en la grilla ---
 async function cargarTurnosAgenda() {
     const inputFecha = document.getElementById('fechaAgendaInput');
     if (!inputFecha || !inputFecha.value) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:7777/api/turnos/fecha/${inputFecha.value}`);
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/fecha/${inputFecha.value}`);
         const turnos = await respuesta.json();
 
-        // 1. Limpieza: Borramos las tarjetitas que ya estaban dibujadas
         document.querySelectorAll('.turno-card').forEach(card => card.remove());
 
-        // TRUCO DE DEBUG: Ver en consola qué estamos recibiendo
-        console.log("Turnos para el día:", turnos);
-
-        // 2. Dibujamos los nuevos turnos
         turnos.forEach(turno => {
-            // SOLUCIÓN ZONA HORARIA: Convertimos a Objeto Date y le pedimos la hora local
             const fechaObj = new Date(turno.Fecha_Hora);
             const horas = fechaObj.getHours().toString().padStart(2, '0');
-            const minutos = fechaObj.getMinutes().toString().padStart(2, '0');
-            const horaFormateada = `${horas}:${minutos}`; 
+            const minutosReales = fechaObj.getMinutes();
+            const minutosCelda = minutosReales < 30 ? '00' : '30';
+            const horaFormateada = `${horas}:${minutosCelda}`;
             
-            // Buscamos la coordenada exacta
             const celdaDestino = document.querySelector(`.agenda-celda[data-hora="${horaFormateada}"][data-id-empleada="${turno.Id_Empleada}"]`);
 
             if (celdaDestino) {
                 celdaDestino.style.position = 'relative'; 
 
-                // Matemática visual: 2 píxeles por cada minuto
-                const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; // El || 30 es un seguro por si falla la base
+                const alturaPixeles = (turno.Duracion_Minutos || 30) * 2; 
 
                 const tarjeta = document.createElement('div');
                 tarjeta.className = 'turno-card';
@@ -532,13 +700,16 @@ async function cargarTurnosAgenda() {
 
                 tarjeta.onclick = () => {
                     const precioServicio = turno.Precio_Base || 0; 
+                    const senaPagada = turno.Sena_Monto || 0; // <--- Agregamos esto
                     abrirModalDetalleTurno(
                         turno.Id_Turno, 
                         turno.Nombre_Clienta, 
                         turno.Nombre_Servicio, 
                         precioServicio,
                         turno.Estado, 
-                        turno.Color);
+                        turno.Color,
+                        senaPagada
+                    );
                 };
                 tarjeta.innerHTML = `
                     <div class="turno-titulo">${turno.Nombre_Clienta}</div>
@@ -546,8 +717,6 @@ async function cargarTurnosAgenda() {
                 `;
 
                 celdaDestino.appendChild(tarjeta);
-            } else {
-                console.warn(`No se encontró la celda para las ${horaFormateada} y empleada ID: ${turno.Id_Empleada}`);
             }
         });
     } catch (error) {
@@ -555,11 +724,47 @@ async function cargarTurnosAgenda() {
     }
 }
 
+// Guarda la seña desde el detalle del turno sin tener que cobrar todo el servicio
+async function guardarSenaIndependiente() {
+    const idTurno = document.getElementById('idTurnoCobroOculto').value;
+    const inputSena = document.getElementById('senaDetalleInput');
+    const nuevaSena = parseFloat(inputSena.value) || 0;
+    
+    // Sacamos el nombre de la clienta del texto para usarlo en el concepto del Ingreso
+    let nombreClienta = document.getElementById('nombreClientaCobro').textContent;
+    nombreClienta = nombreClienta.replace('Clienta: ', '').trim();
+
+    if (!idTurno) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/sena`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                Sena_Monto: nuevaSena, // <--- AHORA SÍ, CON EL NOMBRE CORRECTO
+                Nombre_Clienta: nombreClienta 
+            })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Seña actualizada y registrada en Ingresos!", "success");
+            
+            const textoSena = document.getElementById('textoDetalleSena');
+            if(textoSena) textoSena.textContent = `Seña abonada: -$${nuevaSena.toLocaleString('es-AR')}`;
+            
+        } else {
+            mostrarNotificacion("Error al guardar la seña.", "error");
+        }
+    } catch (error) {
+        console.error("Error guardando la seña:", error);
+        mostrarNotificacion("Error de conexión.", "error");
+    }
+}
+
 // ==========================================================================
 // 4. MÓDULO DE CLIENTAS
 // ==========================================================================
 
-// --- Modal Clientas ---
 const modal = document.getElementById('modalNuevaClienta');
 
 function abrirModal() {
@@ -576,7 +781,6 @@ if (modal) {
     });
 }
 
-// --- Prepara el modal para CREAR de cero ---
 function prepararNuevaClienta() {
     document.getElementById('idClientaOculto').value = ''; 
     document.getElementById('nombreInput').value = '';
@@ -591,13 +795,11 @@ function prepararNuevaClienta() {
     abrirModal();
 }
 
-// --- Prepara el modal para EDITAR ---
 function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     document.getElementById('idClientaOculto').value = id; 
     document.getElementById('nombreInput').value = nombre;
     document.getElementById('apellidoInput').value = apellido;
     
-    // Tratamiento especial para la fecha
     if (fechaNac && fechaNac !== 'null' && fechaNac !== 'undefined') {
         document.getElementById('cumpleInput').value = fechaNac.split('T')[0];
     } else {
@@ -613,55 +815,66 @@ function abrirModalEditarClienta(id, nombre, apellido, fechaNac, telefono, ig) {
     abrirModal();
 }
 
-// --- Modal Perfil / Historial ---
-const modalPerfil = document.getElementById('modalPerfilClienta');
 
+// --- Lógica del Historial Estético (Modal Perfil) ---
 function cerrarModalPerfil() {
-    if (modalPerfil) modalPerfil.classList.remove('active');
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (modalPerfil) {
+        modalPerfil.classList.remove('active');
+    }
 }
 
-if (modalPerfil) {
-    modalPerfil.addEventListener('click', function(e) {
-        if(e.target === modalPerfil) cerrarModalPerfil();
-    });
-}
+window.addEventListener('click', function(e) {
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (e.target === modalPerfil) {
+        cerrarModalPerfil();
+    }
+});
 
-// --- Función para ver el perfil ---
 async function verPerfilClienta(idClienta, nombre, apellido) {
-    // 1. Ponemos el nombre de la clienta en el título
     document.getElementById('nombrePerfilClienta').textContent = `Historial de ${nombre} ${apellido}`;
     
     const listaHistorial = document.getElementById('listaHistorialClienta');
     listaHistorial.innerHTML = '<p style="text-align:center; color:#888;">Cargando historial...</p>';
     
-    // 2. Abrimos el modal
-    modalPerfil.classList.add('active');
+    const modalPerfil = document.getElementById('modalPerfilClienta');
+    if (modalPerfil) {
+        modalPerfil.classList.add('active');
+    }
 
     try {
-        // 3. Vamos a buscar los datos al backend
-        const respuesta = await fetch(`http://localhost:7777/api/clientas/${idClienta}/historial`);
+        const respuesta = await fetch(`http://localhost:3000/api/clientas/${idClienta}/historial`);
         const historial = await respuesta.json();
 
-        listaHistorial.innerHTML = ''; // Limpiamos el "Cargando..."
+        listaHistorial.innerHTML = ''; 
 
         if (historial.length === 0) {
-            listaHistorial.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Esta clienta aún no tiene turnos registrados. 💅</p>';
+            listaHistorial.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Esta clienta aún no tiene turnos registrados.</p>';
             return;
         }
 
-        // 4. Dibujamos cada turno pasado
         historial.forEach(turno => {
-            // Formateamos la fecha para que se lea linda (ej. "23/06/2026 - 15:30 hs")
             const fechaObj = new Date(turno.Fecha_Hora);
             const fechaLimpia = fechaObj.toLocaleDateString('es-AR');
             const horaLimpia = fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+
+            let tagsHTML = '';
+            if (turno.Color) {
+                const detalles = turno.Color.split(',');
+                detalles.forEach(detalle => {
+                    tagsHTML += `<span style="background: #f0e6d2; color: #8b6d3b; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; margin-right: 5px; display: inline-block; margin-top: 8px;">${detalle.trim()}</span>`;
+                });
+            }
 
             const itemHTML = `
                 <div style="background-color: #f9f9f9; border-left: 4px solid var(--mostaza); padding: 10px 15px; margin-bottom: 10px; border-radius: 4px;">
                     <div style="font-weight: bold; color: #333; margin-bottom: 5px;">${turno.Nombre_Servicio}</div>
                     <div style="font-size: 13px; color: #666; display: flex; justify-content: space-between;">
-                        <span>📅 ${fechaLimpia} a las ${horaLimpia} hs</span>
-                        <span>👩‍💼 con ${turno.Nombre_Ap}</span>
+                        <span>Fecha: ${fechaLimpia} a las ${horaLimpia} hs</span>
+                        <span>Profesional: ${turno.Nombre_Ap}</span>
+                    </div>
+                    <div>
+                        ${tagsHTML}
                     </div>
                 </div>
             `;
@@ -674,7 +887,6 @@ async function verPerfilClienta(idClienta, nombre, apellido) {
     }
 }
 
-// --- Alternar Vistas de Clientas ---
 function cambiarVistaClientas(vista) {
     const vistaTarjetas = document.getElementById('vistaClientasTarjetas');
     const vistaLista = document.getElementById('vistaClientasListado');
@@ -682,7 +894,7 @@ function cambiarVistaClientas(vista) {
     const btnLista = document.getElementById('btnVistaLista');
 
     if (vista === 'tarjetas') {
-        vistaTarjetas.style.display = 'grid'; // O el display que use tu clase cards-grid
+        vistaTarjetas.style.display = 'grid'; 
         vistaLista.style.display = 'none';
         btnTarjetas.classList.add('active');
         btnLista.classList.remove('active');
@@ -694,13 +906,11 @@ function cambiarVistaClientas(vista) {
     }
 }
 
-// --- Cargar Clientas (Genera tarjetas y filas simultáneamente) ---
 async function cargarClientas() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/clientas');
+        const respuesta = await fetch('http://localhost:3000/api/clientas');
         const clientas = await respuesta.json();
         
-        // 1. Llenar select del modal de turnos
         const selectTurno = document.getElementById('selectClientaTurno');
         if (selectTurno) {
             selectTurno.innerHTML = '<option value="">Seleccione una clienta...</option>';
@@ -712,7 +922,6 @@ async function cargarClientas() {
             });
         }
 
-        // 2. Traer los dos contenedores
         const contenedorTarjetas = document.getElementById('vistaClientasTarjetas');
         const tbodyLista = document.getElementById('tablaClientasBody');
         
@@ -726,9 +935,8 @@ async function cargarClientas() {
             }
             const iniciales = `${clienta.Nombre[0]}${clienta.Apellido[0]}`.toUpperCase();
 
-            // A. DIBUJAR TARJETA
             const tarjetaHTML = `
-                <div class="card item-clienta-busqueda"> <!-- Clase unificada para buscar -->
+                <div class="card item-clienta-busqueda"> 
                     <div class="card-header">
                         <div class="avatar">${iniciales}</div>
                         <div class="client-info">
@@ -740,16 +948,20 @@ async function cargarClientas() {
                         <p>Instagram: <strong>${clienta.Ig || '-'}</strong></p>
                         <p>Teléfono: <strong>${clienta.Telefono || '-'}</strong></p>
                     </div>
-                    <div class="card-actions">
-                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
-                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
-                        <button class="btn-icon" style="color: var(--mostaza); border-color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">+ Turno</button>
+                   <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center; gap: 10px; display: flex;">
+                        <!-- 1. Principal: Agendar Turno -->
+                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                        
+                        <!-- 2. Secundario: Ver ficha -->
+                        <button class="btn-icon" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                        
+                        <!-- 3. Terciario: Editar -->
+                        <button class="btn-icon" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </div>
                 </div>
             `;
             if (contenedorTarjetas) contenedorTarjetas.innerHTML += tarjetaHTML;
 
-            // B. DIBUJAR FILA DE LISTA
             const filaHTML = `
                 <tr class="item-clienta-busqueda" style="border-bottom: 1px solid #eee;">
                     <td style="padding: 12px 15px; font-weight: bold; color: #333;" class="nombre-para-buscar">${clienta.Nombre} ${clienta.Apellido}</td>
@@ -757,9 +969,9 @@ async function cargarClientas() {
                     <td style="padding: 12px 15px;">${clienta.Ig || '-'}</td>
                     <td style="padding: 12px 15px;">${fechaNac}</td>
                     <td style="padding: 12px 15px; text-align: center;">
-                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">✏️</button>
-                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">👁️</button>
-                        <button class="btn-icon" title="Agendar Turno" style="color: var(--mostaza);" onclick="agendarTurnoRapido('${clienta.Id_Clienta}')">📅</button>
+                        <button class="btn-icon" style="color: var(--mostaza); font-weight: bold;" onclick="agendarTurnoRapido('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">+ Turno</button>
+                        <button class="btn-icon" title="Ver Historial" onclick="verPerfilClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}')">Ver</button>
+                        <button class="btn-icon" title="Editar" onclick="abrirModalEditarClienta('${clienta.Id_Clienta}', '${clienta.Nombre}', '${clienta.Apellido}', '${clienta.Fecha_Nac}', '${clienta.Telefono}', '${clienta.Ig}')">Editar</button>
                     </td>
                 </tr>
             `;
@@ -770,7 +982,6 @@ async function cargarClientas() {
     }
 }
 
-// --- Guardar Clienta (POST y PUT) ---
 async function guardarClienta() {
     const idOculto = document.getElementById('idClientaOculto').value;
     const nombre = document.getElementById('nombreInput').value.trim();
@@ -793,8 +1004,8 @@ async function guardarClienta() {
     };
 
     const url = idOculto 
-        ? `http://localhost:7777/api/clientas/${idOculto}` 
-        : 'http://localhost:7777/api/clientas';
+        ? `http://localhost:3000/api/clientas/${idOculto}` 
+        : 'http://localhost:3000/api/clientas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -819,31 +1030,29 @@ async function guardarClienta() {
     }
 }
 
-// --- Buscador de Clientas Universal ---
 const inputBuscador = document.getElementById('buscadorClientas');
 if (inputBuscador) {
     inputBuscador.addEventListener('input', function(evento) {
         const textoBuscado = evento.target.value.toLowerCase();
         
-        // Agarramos TANTO las tarjetas COMO las filas de la tabla
         const elementosClienta = document.querySelectorAll('.item-clienta-busqueda');
         
         elementosClienta.forEach(elemento => {
             const nombreClienta = elemento.querySelector('.nombre-para-buscar').textContent.toLowerCase();
             if (nombreClienta.includes(textoBuscado)) {
-                elemento.style.display = ''; // Lo vuelve a mostrar en su formato original
+                elemento.style.display = ''; 
             } else {
-                elemento.style.display = 'none'; // Lo oculta
+                elemento.style.display = 'none'; 
             }
         });
     });
 }
 
+
 // ==========================================================================
 // 5. MÓDULO DE EMPLEADAS
 // ==========================================================================
 
-// --- Modal Empleadas ---
 const modalEmpleada = document.getElementById('modalNuevaEmpleada');
 
 function abrirModalEmpleada() {
@@ -860,7 +1069,6 @@ if (modalEmpleada) {
     });
 }
 
-// --- Prepara el modal para CREAR de cero ---
 function prepararNuevaEmpleada() {
     document.getElementById('idEmpleadaOculto').value = ''; 
     document.getElementById('nombreEmpleadaInput').value = '';
@@ -872,11 +1080,9 @@ function prepararNuevaEmpleada() {
     abrirModalEmpleada();
 }
 
-// --- Prepara el modal para EDITAR ---
 function abrirModalEditarEmpleada(id, nombre, dni) {
     document.getElementById('idEmpleadaOculto').value = id; 
     document.getElementById('nombreEmpleadaInput').value = nombre;
-    
     document.getElementById('dniEmpleadaInput').value = (dni === '-' || !dni) ? '' : dni;
     
     document.getElementById('tituloModalEmpleada').textContent = 'Editar Profesional';
@@ -885,7 +1091,6 @@ function abrirModalEditarEmpleada(id, nombre, dni) {
     abrirModalEmpleada();
 }
 
-// --- Guardar (Sirve para POST y PUT) ---
 async function guardarEmpleada() {
     const idOculto = document.getElementById('idEmpleadaOculto').value;
     const nombre = document.getElementById('nombreEmpleadaInput').value.trim();
@@ -905,8 +1110,8 @@ async function guardarEmpleada() {
     }
 
     const url = idOculto 
-        ? `http://localhost:7777/api/empleadas/${idOculto}` 
-        : 'http://localhost:7777/api/empleadas';
+        ? `http://localhost:3000/api/empleadas/${idOculto}` 
+        : 'http://localhost:3000/api/empleadas';
         
     const metodoElegido = idOculto ? 'PUT' : 'POST';
 
@@ -932,28 +1137,21 @@ async function guardarEmpleada() {
     }
 }
 
-// --- Cargar Empleadas (Dibuja las tarjetas) ---
 async function cargarEmpleadas() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/empleadas');
+        const respuesta = await fetch('http://localhost:3000/api/empleadas');
         const empleadas = await respuesta.json();
-        // ================================================================
-        // NUEVO: Llenamos el desplegable de Profesionales en el modal de Turnos
-        // ================================================================
+
         const selectEmpleada = document.getElementById('selectEmpleadaTurno');
         if (selectEmpleada) {
-            // Limpiamos las opciones viejas
             selectEmpleada.innerHTML = '<option value="">Seleccione...</option>';
-            
-            // Agregamos a cada chica disponible
             empleadas.forEach(empleada => {
                 const opcion = document.createElement('option');
-                opcion.value = empleada.Id_Empleada; // El ID real de la base de datos
-                opcion.textContent = empleada.Nombre_Ap; // El nombre que ve la clienta
+                opcion.value = empleada.Id_Empleada; 
+                opcion.textContent = empleada.Nombre_Ap; 
                 selectEmpleada.appendChild(opcion);
             });
         }
-        // ================================================================
         
         const contenedor = document.getElementById('contenedorEmpleadas');
         if (!contenedor) return; 
@@ -961,9 +1159,22 @@ async function cargarEmpleadas() {
         contenedor.innerHTML = '';
         
         empleadas.forEach(empleada => {
+            // Definimos las iniciales y el DNI
             const inicial = empleada.Nombre_Ap[0].toUpperCase();
             const dniText = empleada.DNI || empleada.dni || '-';
 
+            // Armamos el textito de la última liquidación
+            let infoUltimaLiq = '<span style="font-size: 12px; color: #aaa; font-style: italic;">Sin pagos previos registrados</span>';
+            
+            if (empleada.Ultima_Fecha_Liq) {
+                const fechaObj = new Date(empleada.Ultima_Fecha_Liq);
+                const fechaLimpia = fechaObj.toLocaleDateString('es-AR');
+                const montoLimpio = empleada.Ultimo_Monto_Liq.toLocaleString('es-AR');
+                
+                infoUltimaLiq = `<span style="font-size: 12px; color: #666; font-weight: 500;">Última liq: <strong>$${montoLimpio}</strong> el ${fechaLimpia}</span>`;
+            }
+
+            // Armamos la tarjeta integrando el nuevo dato
             const tarjetaHTML = `
                 <div class="card">
                     <div class="card-header">
@@ -973,9 +1184,29 @@ async function cargarEmpleadas() {
                             <span>DNI: ${dniText}</span>
                         </div>
                     </div>
-                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
-                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')">✏️ Editar</button>
-                        <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">🗑️ Dar de baja</button>
+                    
+                    <div style="background-color: #f8f9fa; border: 1px solid #eee; border-radius: 8px; padding: 15px; margin-top: 15px; text-align: center;">
+                        <span style="font-size: 13px; color: #666; display: block; margin-bottom: 5px;">Saldo Acumulado</span>
+                        
+                        <strong style="font-size: 26px; color: #28a745; display: block; margin-bottom: 5px;">
+                            $${empleada.Saldo_Acumulado.toLocaleString('es-AR')}
+                        </strong>
+                        
+                        <!-- ACÁ APARECE LA INFO DE LA ÚLTIMA LIQUIDACIÓN -->
+                        <div style="margin-bottom: 15px; border-top: 1px dashed #ddd; padding-top: 8px;">
+                            ${infoUltimaLiq}
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button class="btn-icon" style="background-color: #28a745; color: white; border: none; font-weight: bold; padding: 6px 12px;" onclick="liquidarSueldo(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Liquidar</button>
+                            <button class="btn-icon" onclick="verDetalleSueldo(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Detalle</button>
+                        </div>
+                    </div>
+
+                    <div class="card-actions" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px; justify-content: center;">
+                        <button class="btn-icon" onclick="abrirModalEditarEmpleada('${empleada.Id_Empleada}', '${empleada.Nombre_Ap}', '${dniText}')"> Editar</button>
+                        <button class="btn-icon" style="color: #d9534f;" onclick="eliminarEmpleada(${empleada.Id_Empleada})">Dar de baja</button>
+                        <button class="btn-icon" onclick="abrirModalEspecialidades(${empleada.Id_Empleada}, '${empleada.Nombre_Ap}')">Configurar Áreas</button>
                     </div>
                 </div>
             `;
@@ -983,6 +1214,208 @@ async function cargarEmpleadas() {
         });
     } catch (error) {
         console.error("Error conectando con la API de empleadas:", error);
+    }
+}
+
+async function eliminarEmpleada(id) {
+    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
+    
+    if (!confirmacion) return; 
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Profesional dada de baja con éxito.", "success");
+            cargarEmpleadas(); 
+        } else {
+            mostrarNotificacion("Hubo un error al intentar eliminar en la base de datos.", "error");
+        }
+    } catch (error) {
+        console.error("Error eliminando empleada:", error);
+        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
+    }
+}
+
+// --- Modal de Detalle de Sueldo ---
+function cerrarModalDetalleSueldo() {
+    const modal = document.getElementById('modalDetalleSueldo');
+    if (modal) modal.classList.remove('active');
+}
+
+// Visualizar qué compone el saldo a favor
+async function verDetalleSueldo(idEmpleada, nombre) {
+    document.getElementById('tituloModalDetalleSueldo').textContent = `Detalle de ${nombre}`;
+    const tbody = document.getElementById('tablaDetalleSueldoBody');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">Cargando historial...</td></tr>';
+    
+    const modal = document.getElementById('modalDetalleSueldo');
+    if (modal) modal.classList.add('active');
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/sueldo-detalle`);
+        const detalles = await respuesta.json();
+        
+        tbody.innerHTML = '';
+        
+        if (detalles.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color: #888;">No hay comisiones pendientes de cobro.</td></tr>';
+            return;
+        }
+        
+        detalles.forEach(d => {
+            const fechaObj = new Date(d.Fecha_Hora);
+            const fechaLimpia = fechaObj.toLocaleDateString('es-AR') + ' ' + fechaObj.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            
+            tbody.innerHTML += `
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding: 10px;">${fechaLimpia}</td>
+                    <td style="padding: 10px; font-weight: 500;">${d.Nombre_Clienta}</td>
+                    <td style="padding: 10px; color: #555;">${d.Nombre_Servicio}</td>
+                    <td style="padding: 10px; text-align: right;">$${d.Total_Abonado.toLocaleString('es-AR')}</td>
+                    <td style="padding: 10px; text-align: center; color: var(--mostaza); font-weight: bold;">${d.Porcentaje_Comision * 100}%</td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold; color: #28a745;">$${d.A_Cobrar.toLocaleString('es-AR')}</td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error(error);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: #d9534f; padding: 20px;">Error al cargar los datos.</td></tr>';
+    }
+}
+
+// Vaciar la caja y registrar el pago
+async function liquidarSueldo(idEmpleada, nombre) {
+    const confirmacion = await pedirConfirmacion(`¿Confirmás la liquidación del sueldo pendiente para ${nombre}? Esta acción dejará su caja en cero.`);
+    if (!confirmacion) return;
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/liquidar`, { 
+            method: 'POST' 
+        });
+        
+        if (respuesta.ok) {
+            mostrarNotificacion("¡Sueldo liquidado con éxito!", "success");
+            cargarEmpleadas(); 
+        } else {
+            mostrarNotificacion("Error al liquidar el sueldo o la caja ya estaba en cero.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión con el servidor.", "error");
+    }
+}
+
+// --- Modal de Especialidades y Comisiones ---
+function cerrarModalEspecialidades() {
+    const modal = document.getElementById('modalEspecialidades');
+    if (modal) modal.classList.remove('active');
+}
+
+async function abrirModalEspecialidades(idEmpleada, nombre) {
+    document.getElementById('idEspecialidadOculto').value = idEmpleada;
+    document.getElementById('tituloModalEspecialidades').textContent = `Áreas de ${nombre}`;
+    
+    const contenedor = document.getElementById('contenedorListaAreas');
+    contenedor.innerHTML = '<p style="text-align:center; color:#888;">Cargando áreas...</p>';
+    
+    const modal = document.getElementById('modalEspecialidades');
+    if (modal) modal.classList.add('active');
+
+    try {
+        const resAreas = await fetch('http://localhost:3000/api/areas');
+        const areasDisponibles = await resAreas.json();
+        
+        const resAsignadas = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`);
+        const areasAsignadas = await resAsignadas.json();
+        
+        contenedor.innerHTML = '';
+        
+        if(areasDisponibles.length === 0) {
+            contenedor.innerHTML = '<p style="text-align:center; color:#888;">No hay áreas registradas en los servicios.</p>';
+            return;
+        }
+
+        areasDisponibles.forEach(areaObj => {
+            const nombreArea = areaObj.Area;
+            const asignada = areasAsignadas.find(a => a.Area === nombreArea);
+            
+            const estaChequeado = asignada ? 'checked' : '';
+            const comisionValor = asignada ? asignada.Porcentaje_Comision : '0.50'; 
+
+            const div = document.createElement('div');
+            div.style.display = 'flex';
+            div.style.alignItems = 'center';
+            div.style.justifyContent = 'space-between';
+            div.style.padding = '10px';
+            div.style.borderBottom = '1px solid #f9f9f9';
+
+            div.innerHTML = `
+                <label style="display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer;">
+                    <input type="checkbox" class="check-area" value="${nombreArea}" ${estaChequeado}>
+                    ${nombreArea}
+                </label>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <span style="font-size:12px; color:#666;">Comisión:</span>
+                    <input type="number" step="0.05" min="0" max="1" class="input-comision" data-area="${nombreArea}" value="${comisionValor}" style="width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;" ${estaChequeado ? '' : 'disabled'}>
+                </div>
+            `;
+            contenedor.appendChild(div);
+        });
+
+        // Activar o desactivar el porcentaje si tildan la casilla
+        const checkboxes = contenedor.querySelectorAll('.check-area');
+        checkboxes.forEach(chk => {
+            chk.addEventListener('change', function() {
+                const inputRelacionado = contenedor.querySelector(`.input-comision[data-area="${this.value}"]`);
+                if (inputRelacionado) {
+                    inputRelacionado.disabled = !this.checked;
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error(error);
+        contenedor.innerHTML = '<p style="text-align:center; color:#d9534f;">Error al cargar la información.</p>';
+    }
+}
+
+async function guardarEspecialidades() {
+    const idEmpleada = document.getElementById('idEspecialidadOculto').value;
+    const contenedor = document.getElementById('contenedorListaAreas');
+    
+    const checkboxes = contenedor.querySelectorAll('.check-area:checked');
+    const areasParaGuardar = [];
+
+    checkboxes.forEach(chk => {
+        const nombreArea = chk.value;
+        const inputComision = contenedor.querySelector(`.input-comision[data-area="${nombreArea}"]`);
+        const valorComision = inputComision ? parseFloat(inputComision.value) : 0.50;
+        
+        areasParaGuardar.push({
+            area: nombreArea,
+            comision: valorComision
+        });
+    });
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/empleadas/${idEmpleada}/areas`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ areas: areasParaGuardar })
+        });
+
+        if (respuesta.ok) {
+            mostrarNotificacion("Áreas actualizadas correctamente.", "success");
+            cerrarModalEspecialidades();
+        } else {
+            mostrarNotificacion("Error al guardar la configuración.", "error");
+        }
+    } catch (error) {
+        console.error(error);
+        mostrarNotificacion("Error de conexión.", "error");
     }
 }
 
@@ -1012,7 +1445,6 @@ function prepararNuevoGasto() {
     document.getElementById('montoGastoInput').value = '';
     document.getElementById('selectCategoriaGasto').value = '';
     
-    // Ponemos la fecha de hoy por defecto
     const hoy = new Date();
     const yyyy = hoy.getFullYear();
     const mm = String(hoy.getMonth() + 1).padStart(2, '0');
@@ -1023,31 +1455,11 @@ function prepararNuevoGasto() {
     abrirModalGasto();
 }
 
-// Llenar el desplegable con las categorías de SQL
-async function cargarCategoriasGasto() {
-    try {
-        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos');
-        const categorias = await respuesta.json();
-        
-        const select = document.getElementById('selectCategoriaGasto');
-        if (select) {
-            select.innerHTML = '<option value="">Seleccione...</option>';
-            categorias.forEach(cat => {
-                select.innerHTML += `<option value="${cat.Id_Categoria}">${cat.Nombre}</option>`;
-            });
-        }
-    } catch (error) {
-        console.error("Error conectando con la API de categorías:", error);
-    }
-}
-
-// Variable global para guardar todos los gastos en memoria
 let memoriaGastos = [];
 
-// Llenar el desplegable con las categorías (Actualizado para llenar también el filtro)
 async function cargarCategoriasGasto() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos');
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos');
         const categorias = await respuesta.json();
         
         const selectModal = document.getElementById('selectCategoriaGasto');
@@ -1066,43 +1478,70 @@ async function cargarCategoriasGasto() {
     }
 }
 
-// Traer los gastos de la base de datos
 async function cargarGastos() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/gastos');
-        memoriaGastos = await respuesta.json(); // Guardamos todo en memoria
-        aplicarFiltrosGastos(); // Dibujamos pasando por el filtro
+        const respuesta = await fetch('http://localhost:3000/api/gastos');
+        memoriaGastos = await respuesta.json(); 
+        aplicarFiltrosGastos(); 
     } catch (error) {
         console.error("Error conectando con la API de gastos:", error);
     }
 }
 
-// Función que filtra y dibuja la tabla (AHORA CON AÑO)
 function aplicarFiltrosGastos() {
-    const mesSeleccionado = document.getElementById('filtroMesGasto').value;
     const catSeleccionada = document.getElementById('filtroCategoriaGasto').value;
-    
-    // Capturamos el año (si existe el filtro, si no, 'todos')
-    const filtroAnio = document.getElementById('filtroAnioGasto');
-    const anioSeleccionado = filtroAnio ? filtroAnio.value : 'todos';
-    
+    const modoFecha = document.getElementById('modoFechaGastos').value;
+
+    // Variables para el modo 'Mes y Año'
+    const mesSeleccionado = document.getElementById('filtroMesGasto').value;
+    const anioSeleccionado = document.getElementById('filtroAnioGasto').value;
+
+    // Variables para el modo 'Rango Personalizado'
+    const rangoValor = document.getElementById('rangoFechaGastos').value;
+    let fechaDesde = null, fechaHasta = null;
+
+    if (modoFecha === 'rango' && rangoValor) {
+        // Flatpickr separa el rango con " a " o " to "
+        if (rangoValor.includes(' a ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' a ');
+        } else if (rangoValor.includes(' to ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' to ');
+        } else if (rangoValor.length === 10) {
+            fechaDesde = rangoValor;
+            fechaHasta = rangoValor;
+        }
+    }
+
     const gastosFiltrados = memoriaGastos.filter(gasto => {
-        const fechaObj = new Date(gasto.Fecha);
-        const mesGasto = fechaObj.getUTCMonth().toString();
-        const anioGasto = fechaObj.getUTCFullYear().toString(); // Extraemos el año
+        // 1. Validar Filtro de Categoría
         const categoriaGasto = gasto.Nombre_Categoria || 'Sin tipo';
-        
-        const pasaFiltroMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
         const pasaFiltroCat = (catSeleccionada === 'todas') || (categoriaGasto === catSeleccionada);
-        const pasaFiltroAnio = (anioSeleccionado === 'todos') || (anioGasto === anioSeleccionado);
+
+        // 2. Validar Filtro de Fecha
+        let pasaFiltroFecha = true;
         
-        return pasaFiltroMes && pasaFiltroCat && pasaFiltroAnio;
+        // Formateamos la fecha del gasto para que sea fácil de comparar (YYYY-MM-DD)
+        const fechaObj = new Date(gasto.Fecha);
+        const anioGasto = fechaObj.getUTCFullYear().toString();
+        const mesGasto = fechaObj.getUTCMonth().toString();
+        const diaStr = String(fechaObj.getUTCDate()).padStart(2, '0');
+        const mesStr = String(fechaObj.getUTCMonth() + 1).padStart(2, '0');
+        const fechaGastoFormateada = `${anioGasto}-${mesStr}-${diaStr}`;
+
+        if (modoFecha === 'mes') {
+            const pasaMes = (mesSeleccionado === 'todos') || (mesGasto === mesSeleccionado);
+            const pasaAnio = (anioSeleccionado === 'todos') || (anioGasto === anioSeleccionado);
+            pasaFiltroFecha = pasaMes && pasaAnio;
+        } else if (modoFecha === 'rango' && fechaDesde && fechaHasta) {
+            pasaFiltroFecha = (fechaGastoFormateada >= fechaDesde) && (fechaGastoFormateada <= fechaHasta);
+        }
+
+        return pasaFiltroCat && pasaFiltroFecha;
     });
     
     dibujarTablaGastos(gastosFiltrados);
 }
 
-// Función exclusiva para pintar el HTML
 function dibujarTablaGastos(listaGastos) {
     const tbody = document.getElementById('tablaGastosBody');
     if (!tbody) return;
@@ -1134,7 +1573,6 @@ function dibujarTablaGastos(listaGastos) {
     });
 }
 
-// Guardar el Gasto en la base de datos
 async function guardarGasto() {
     const desc = document.getElementById('descGastoInput').value.trim();
     const fecha = document.getElementById('fechaGastoInput').value;
@@ -1154,7 +1592,7 @@ async function guardarGasto() {
     };
 
     try {
-        const respuesta = await fetch('http://localhost:7777/api/gastos', {
+        const respuesta = await fetch('http://localhost:3000/api/gastos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(nuevoGasto)
@@ -1178,7 +1616,7 @@ async function eliminarGasto(id) {
     if (!confirmacion) return;
 
     try {
-        const respuesta = await fetch(`http://localhost:7777/api/gastos/${id}`, { method: 'DELETE' });
+        const respuesta = await fetch(`http://localhost:3000/api/gastos/${id}`, { method: 'DELETE' });
         if (respuesta.ok) {
             mostrarNotificacion("Gasto eliminado con éxito.", "success");
             cargarGastos();
@@ -1190,30 +1628,6 @@ async function eliminarGasto(id) {
     }
 }
 
-// --- Eliminar Empleada (Con Promesa Estética) ---
-async function eliminarEmpleada(id) {
-    const confirmacion = await pedirConfirmacion("¿Estás segura de que querés dar de baja a esta profesional? Esta acción no se puede deshacer.");
-    
-    if (!confirmacion) return; 
-
-    try {
-        const respuesta = await fetch(`http://localhost:7777/api/empleadas/${id}`, {
-            method: 'DELETE'
-        });
-
-        if (respuesta.ok) {
-            mostrarNotificacion("Profesional dada de baja con éxito.", "success");
-            cargarEmpleadas(); 
-        } else {
-            mostrarNotificacion("Hubo un error al intentar eliminar en la base de datos.", "error");
-        }
-    } catch (error) {
-        console.error("Error eliminando empleada:", error);
-        mostrarNotificacion("No se pudo conectar con el servidor.", "error");
-    }
-}
-
-// --- Lógica del Modal de Nueva Categoría ---
 const modalCategoria = document.getElementById('modalNuevaCategoria');
 
 function abrirModalNuevaCategoria() {
@@ -1234,7 +1648,7 @@ async function guardarNuevaCategoria() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:7777/api/categorias-gastos', {
+        const respuesta = await fetch('http://localhost:3000/api/categorias-gastos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Nombre: nombre })
@@ -1243,8 +1657,6 @@ async function guardarNuevaCategoria() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Categoría creada con éxito!", "success");
             cerrarModalNuevaCategoria();
-            
-            // Volvemos a cargar las categorías para que aparezca en el desplegable
             await cargarCategoriasGasto(); 
         } else {
             mostrarNotificacion("Hubo un error al guardar la categoría.", "error");
@@ -1255,12 +1667,14 @@ async function guardarNuevaCategoria() {
     }
 }
 
+
 // ==========================================================================
 // 7. MÓDULO DE INGRESOS
 // ==========================================================================
+
 async function cargarIngresos() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/ingresos');
+        const respuesta = await fetch('http://localhost:3000/api/ingresos');
         const ingresos = await respuesta.json();
         
         const tbody = document.getElementById('tablaIngresosBody');
@@ -1274,18 +1688,13 @@ async function cargarIngresos() {
         }
 
         ingresos.forEach(ingreso => {
-            // 1. EXTRAEMOS LA FECHA SEGURA (YYYY-MM-DD)
             const fechaCorta = ingreso.Fecha.split('T')[0]; 
-            
-            // 2. LA FORMATEAMOS PARA QUE SE VEA LINDA (DD/MM/YYYY)
             const partes = fechaCorta.split('-');
             const fechaFormateada = `${partes[2]}/${partes[1]}/${partes[0]}`;
 
-            // Lógica para diferenciar turnos de ingresos manuales
             const clientaMostrar = ingreso.Nombre_Clienta ? ingreso.Nombre_Clienta : '<span style="color:#aaa;">- Mostrador -</span>';
             const servicioMostrar = ingreso.Concepto ? `Extra: ${ingreso.Concepto}` : ingreso.Nombre_Servicio;
 
-            // 3. ARMAMOS LA FILA Y LE GUARDAMOS LA FECHA INVISIBLE (data-fecha)
             const filaHTML = `
                 <tr style="border-bottom: 1px solid #eee;" data-fecha="${fechaCorta}">
                     <td style="padding: 12px;">${fechaFormateada}</td>
@@ -1301,7 +1710,7 @@ async function cargarIngresos() {
             `;
             tbody.innerHTML += filaHTML;
         }); 
-        // Una vez que se cargan todos los datos, llamamos al filtro para que calcule el total inicial
+        
         filtrarIngresos();
 
     } catch (error) {
@@ -1310,32 +1719,61 @@ async function cargarIngresos() {
     }
 }
 
-// Función para filtrar los ingresos y sumar el total visible
 function filtrarIngresos() {
-    const textoBuscado = document.getElementById('filtroIngresos').value.toLowerCase();
-    const fechaBuscadaInput = document.getElementById('filtroFechaIngresos').value; 
+    // Actualizado al nuevo ID del HTML
+    const inputBuscador = document.getElementById('buscadorIngresosTexto');
+    const textoBuscado = inputBuscador ? inputBuscador.value.toLowerCase() : '';
+    
+    const modoFecha = document.getElementById('modoFechaIngresos').value;
+    const mesSeleccionado = document.getElementById('filtroMesIngreso').value;
+    const anioSeleccionado = document.getElementById('filtroAnioIngreso').value;
+    
+    const rangoValor = document.getElementById('rangoFechaIngresos').value;
+    let fechaDesde = null, fechaHasta = null;
+
+    if (modoFecha === 'rango' && rangoValor) {
+        if (rangoValor.includes(' a ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' a ');
+        } else if (rangoValor.includes(' to ')) {
+            [fechaDesde, fechaHasta] = rangoValor.split(' to ');
+        } else if (rangoValor.length === 10) {
+            fechaDesde = rangoValor;
+            fechaHasta = rangoValor;
+        }
+    }
 
     const filas = document.querySelectorAll('#tablaIngresosBody tr');
-    let sumaTotal = 0; // Arrancamos el contador en 0
+    let sumaTotal = 0; 
 
     filas.forEach(fila => {
-        if (fila.cells.length === 1) return; // Ignorar la fila de "Cargando..."
+        if (fila.cells.length === 1) return; // Ignora la fila de "Cargando..."
 
         const contenidoFila = fila.textContent.toLowerCase();
-        const fechaFila = fila.getAttribute('data-fecha'); 
+        const fechaFila = fila.getAttribute('data-fecha'); // Lee la fecha oculta en el HTML (YYYY-MM-DD)
 
+        // 1. Filtro de Texto (Clienta, servicio, etc.)
         const cumpleTexto = contenidoFila.includes(textoBuscado);
-        const cumpleFecha = fechaBuscadaInput === "" || fechaFila === fechaBuscadaInput;
 
+        // 2. Filtro de Fecha
+        let cumpleFecha = true;
+        if (fechaFila) {
+            if (modoFecha === 'mes') {
+                const anioFila = fechaFila.substring(0, 4);
+                const mesFila = (parseInt(fechaFila.substring(5, 7)) - 1).toString(); // De 01-12 a 0-11
+                
+                const pasaMes = (mesSeleccionado === 'todos') || (mesFila === mesSeleccionado);
+                const pasaAnio = (anioSeleccionado === 'todos') || (anioFila === anioSeleccionado);
+                cumpleFecha = pasaMes && pasaAnio;
+            } else if (modoFecha === 'rango' && fechaDesde && fechaHasta) {
+                cumpleFecha = (fechaFila >= fechaDesde) && (fechaFila <= fechaHasta);
+            }
+        }
+
+        // Aplicamos el resultado y sumamos la plata
         if (cumpleTexto && cumpleFecha) {
             fila.style.display = '';
             
-            // Si la fila se muestra, extraemos el número y lo sumamos
-            // La plata está en la última columna (índice 4)
             const textoMonto = fila.cells[4].textContent;
-            
-            // Limpiamos el texto para que JavaScript entienda que es un número
-            // (Le sacamos el símbolo $, los puntos de los miles, y convertimos la coma en punto decimal si hubiera)
             const numeroLimpio = parseFloat(textoMonto.replace('$', '').replace(/\./g, '').replace(',', '.'));
             
             if (!isNaN(numeroLimpio)) {
@@ -1346,12 +1784,12 @@ function filtrarIngresos() {
         }
     });
 
-    // Escribimos el resultado final en nuestro nuevo pie de tabla
     const celdaTotal = document.getElementById('totalIngresosFiltrados');
     if (celdaTotal) {
         celdaTotal.textContent = '$' + sumaTotal.toLocaleString('es-AR');
     }
 }
+
 
 // ==========================================================================
 // 8. MÓDULO DE COBRO Y EXTRAS
@@ -1359,26 +1797,35 @@ function filtrarIngresos() {
 
 const modalDetalleTurno = document.getElementById('modalDetalleTurno');
 let precioBaseActual = 0;
-const SENA_ABONADA = 8000; // Valor fijo de la seña
+const SENA_ABONADA = 8000; 
 
-function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase, estado, color) {
+function abrirModalDetalleTurno(idTurno, nombreClienta, nombreServicio, precioBase, estado, color, sena = 0) {
     precioBaseActual = parseFloat(precioBase) || 0;
+    const senaActual = parseFloat(sena) || 0;
     
     document.getElementById('idTurnoCobroOculto').value = idTurno;
     document.getElementById('nombreClientaCobro').textContent = `Clienta: ${nombreClienta}`;
-    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${servicioBase}`;
+    
+    // Corregido: el parámetro se llama nombreServicio
+    document.getElementById('servicioBaseCobro').textContent = `Servicio Base: ${nombreServicio}`;
     document.getElementById('precioBaseCobro').textContent = `Precio Base: $${precioBaseActual.toLocaleString('es-AR')}`;
     
-    // Cargamos el color y el estado
-    // Limpiamos el input para que puedan escribir uno nuevo
+    // --- NUEVO: Mostrar la seña en los campos ---
+    const inputSena = document.getElementById('senaDetalleInput');
+    if (inputSena) inputSena.value = senaActual;
+    
+    const textoDetalleSena = document.getElementById('textoDetalleSena');
+    if (textoDetalleSena) {
+        textoDetalleSena.textContent = `Seña abonada: -$${senaActual.toLocaleString('es-AR')}`;
+    }
+    // ------------------------------------------
+
     document.getElementById('colorTurnoInput').value = '';
     
-    // Armamos la lista de colores guardados
     const contenedorColores = document.getElementById('listaColoresGuardados');
-    contenedorColores.innerHTML = ''; // Limpiar anteriores
+    contenedorColores.innerHTML = ''; 
     
     if (color) {
-        // Separamos los colores por el palito ' | ' que le pusimos en la base de datos
         const arrayColores = color.split(' | ');
         arrayColores.forEach(c => {
             contenedorColores.innerHTML += `<span style="background: #e2e3e5; color: #383d41; padding: 4px 10px; border-radius: 15px; font-size: 12px;"> ${c}</span>`;
@@ -1387,14 +1834,15 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
     const badgeEstado = document.getElementById('estadoTurnoBadge');
     badgeEstado.textContent = estado || 'Pendiente';
     
-    // Referencias a los botones e inputs
-    const btnCobrar = document.getElementById('btnConfirmarCobro'); // Asegurate que tu botón HTML tenga este ID
+    const btnCobrar = document.getElementById('btnConfirmarCobro'); 
     const btnGuardar = document.getElementById('btnGuardarDetalles');
     const inputColor = document.getElementById('colorTurnoInput');
     const inputDescuento = document.getElementById('descuentoCobroInput');
     const checkboxes = document.querySelectorAll('.check-extra');
     
-    // LÓGICA DE BLOQUEO SI YA ESTÁ PAGADO
+    // Capturamos el botón de actualizar seña para poder bloquearlo si es necesario
+    const btnActualizarSena = document.querySelector('button[onclick="guardarSenaIndependiente()"]');
+    
     if (estado === 'Pagado') {
         badgeEstado.style.background = '#d4edda';
         badgeEstado.style.color = '#155724';
@@ -1407,9 +1855,10 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
         btnGuardar.style.display = 'none';
         inputColor.disabled = true;
         inputDescuento.disabled = true;
+        if (inputSena) inputSena.disabled = true;
+        if (btnActualizarSena) btnActualizarSena.disabled = true;
         checkboxes.forEach(chk => chk.disabled = true);
     } else {
-        // Si está pendiente o en progreso, dejamos todo habilitado
         badgeEstado.style.background = estado === 'En progreso' ? '#cce5ff' : '#ffeeba';
         badgeEstado.style.color = estado === 'En progreso' ? '#004085' : '#856404';
         
@@ -1421,17 +1870,23 @@ function abrirModalDetalleTurno(idTurno, nombreClienta, servicioBase, precioBase
         btnGuardar.style.display = 'inline-block';
         inputColor.disabled = false;
         inputDescuento.disabled = false;
+        if (inputSena) inputSena.disabled = false;
+        if (btnActualizarSena) btnActualizarSena.disabled = false;
         checkboxes.forEach(chk => chk.disabled = false);
     }
 
     document.getElementById('descuentoCobroInput').value = 0;
     checkboxes.forEach(chk => chk.checked = false);
-    recalcularTotalCobro();
     
+    // Si la tenés definida, esto recalcula la matemática final
+    if (typeof recalcularTotalCobro === 'function') {
+        recalcularTotalCobro();
+    }
+    
+    const modalDetalleTurno = document.getElementById('modalDetalleTurno');
     if (modalDetalleTurno) modalDetalleTurno.classList.add('active');
 }
 
-// Nueva función que usan las chicas para guardar el color sin cobrar
 async function guardarDetallesTurno() {
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const colorElegido = document.getElementById('colorTurnoInput').value;
@@ -1442,7 +1897,7 @@ async function guardarDetallesTurno() {
     }
     
     try {
-        const respuesta = await fetch(`http://localhost:7777/api/turnos/${idTurno}/detalles`, {
+        const respuesta = await fetch(`http://localhost:3000/api/turnos/${idTurno}/detalles`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ Color: colorElegido })
@@ -1450,8 +1905,6 @@ async function guardarDetallesTurno() {
         
         if (respuesta.ok) {
             mostrarNotificacion("¡Color agregado!", "success");
-            
-            // Acá hacemos lo que pediste: recargamos la página cortito para que todo se actualice
             setTimeout(() => {
                 window.location.reload();
             }, 1000);
@@ -1474,16 +1927,15 @@ if (modalDetalleTurno) {
     });
 }
 
-// Traer la lista de extras desde SQL y armar los checkboxes
 async function cargarExtrasDisponibles() {
     try {
-        const respuesta = await fetch('http://localhost:7777/api/extras');
+        const respuesta = await fetch('http://localhost:3000/api/extras');
         const extras = await respuesta.json();
 
         const contenedor = document.getElementById('contenedorExtras');
         if (!contenedor) return;
 
-        contenedor.innerHTML = ''; // Limpiar el texto "Cargando..."
+        contenedor.innerHTML = ''; 
 
         extras.forEach(extra => {
             const div = document.createElement('div');
@@ -1507,46 +1959,51 @@ async function cargarExtrasDisponibles() {
     }
 }
 
-// LA MAGIA DE LA SUMA: Se ejecuta cada vez que tildan un extra o cambian el descuento
 function recalcularTotalCobro() {
     let sumaExtras = 0;
     
-    // Sumar todos los extras que estén tildados en ese momento
     const checkboxes = document.querySelectorAll('.check-extra:checked');
     checkboxes.forEach(chk => {
         sumaExtras += parseFloat(chk.value);
     });
 
-    // Obtener lo que hayan tipeado en "Descuento"
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
 
-    // Fórmula: Precio Base + Extras - Descuento - Seña
-    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    // LEEMOS EL VALOR REAL DE LA SEÑA DESDE EL INPUT
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
+
+    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
     
-    // Evitar que el total dé negativo
     if (totalFinal < 0) totalFinal = 0;
 
-    // Pintar el resultado verde gigante en el HTML
     document.getElementById('totalFinalCobro').textContent = `$${totalFinal.toLocaleString('es-AR')}`;
 }
 
-// Escuchar si tipean en la cajita de descuento para recalcular en vivo
+// Escuchamos cambios en Descuento
 const inputDescuento = document.getElementById('descuentoCobroInput');
 if (inputDescuento) {
     inputDescuento.addEventListener('input', recalcularTotalCobro);
 }
 
-// Función para mandar la plata a la base de datos
+// Escuchamos cambios en Seña para actualizar en tiempo real
+const inputSenaDetalle = document.getElementById('senaDetalleInput');
+if (inputSenaDetalle) {
+    inputSenaDetalle.addEventListener('input', recalcularTotalCobro);
+}
+
 async function confirmarCobroTurno() {
-    // 1. Recolectar la información básica
     const idTurno = document.getElementById('idTurnoCobroOculto').value;
     const medioPago = document.getElementById('selectMedioPago').value;
     
     const descuentoInput = document.getElementById('descuentoCobroInput').value;
     const descuento = descuentoInput ? parseFloat(descuentoInput) : 0;
     
-    // 2. Recolectar los IDs de los extras que están tildados
+    // LEEMOS LA SEÑA ACÁ TAMBIÉN
+    const senaInput = document.getElementById('senaDetalleInput').value;
+    const senaAbonada = senaInput ? parseFloat(senaInput) : 0;
+    
     const extrasSeleccionados = [];
     let sumaExtras = 0;
     
@@ -1556,11 +2013,9 @@ async function confirmarCobroTurno() {
         sumaExtras += parseFloat(chk.value);
     });
 
-    // 3. Calcular el total exacto que se va a enviar
-    let totalFinal = precioBaseActual + sumaExtras - descuento - SENA_ABONADA;
+    let totalFinal = precioBaseActual + sumaExtras - descuento - senaAbonada;
     if (totalFinal < 0) totalFinal = 0;
 
-    // Armamos el paquetito de datos para enviar
     const datosCobro = {
         idTurno: parseInt(idTurno),
         montoTotal: totalFinal,
@@ -1570,8 +2025,7 @@ async function confirmarCobroTurno() {
     };
 
     try {
-        // Le tocamos la puerta al backend
-        const respuesta = await fetch('http://localhost:7777/api/cobrar-turno', {
+        const respuesta = await fetch('http://localhost:3000/api/cobrar-turno', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1598,13 +2052,26 @@ async function confirmarCobroTurno() {
 const modalNuevoIngreso = document.getElementById('modalNuevoIngreso');
 
 function abrirModalNuevoIngreso() {
+    // 1. Limpiamos los campos
     document.getElementById('conceptoIngresoManual').value = '';
     document.getElementById('montoIngresoManual').value = '';
-    if (modalNuevoIngreso) modalNuevoIngreso.classList.add('active');
+    
+    // 2. Buscamos el modal en el HTML (asegurate de que el ID sea correcto)
+    const modal = document.getElementById('modalNuevoIngreso');
+    
+    // 3. Lo abrimos
+    if (modal) {
+        modal.classList.add('active');
+    } else {
+        console.error("¡Ojo! No encontré el modal. Revisá que el ID en el HTML sea 'modalNuevoIngreso'.");
+    }
 }
 
 function cerrarModalNuevoIngreso() {
-    if (modalNuevoIngreso) modalNuevoIngreso.classList.remove('active');
+    const modal = document.getElementById('modalNuevoIngreso');
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 async function guardarIngresoManual() {
@@ -1618,7 +2085,7 @@ async function guardarIngresoManual() {
     }
 
     try {
-        const respuesta = await fetch('http://localhost:7777/api/ingresos/manual', {
+        const respuesta = await fetch('http://localhost:3000/api/ingresos/manual', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1631,7 +2098,7 @@ async function guardarIngresoManual() {
         if (respuesta.ok) {
             mostrarNotificacion("¡Ingreso extra registrado!", "success");
             cerrarModalNuevoIngreso();
-            cargarIngresos(); // Recarga la tabla al instante sin recargar la página entera
+            cargarIngresos(); 
         } else {
             mostrarNotificacion("Error al guardar el ingreso.", "error");
         }
@@ -1642,453 +2109,232 @@ async function guardarIngresoManual() {
 }
 
 // ==========================================================================
-// MÓDULO DE CONFIGURACIÓN
+// 9 SECCIÓN: DASHBOARD Y MÉTRICAS
 // ==========================================================================
 
-const CONFIG_STORAGE_KEY = 'emme_config_local';
-let configWaPollInterval = null;
+// Helper: Formatea una fecha de JS a 'YYYY-MM-DD'
+const formatoFechaSQL = (fecha) => {
+    const yyyy = fecha.getFullYear();
+    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dd = String(fecha.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+};
 
-function detenerPollWhatsApp() {
-    if (configWaPollInterval) {
-        clearInterval(configWaPollInterval);
-        configWaPollInterval = null;
+// Obtiene las fechas de inicio y fin según el filtro rápido seleccionado
+function obtenerFechasFiltroRapido(tipoFiltro) {
+    const hoy = new Date();
+    let desde = new Date();
+    let hasta = new Date();
+
+    if (tipoFiltro === 'hoy') {
+        // 'desde' y 'hasta' ya son hoy
+    } else if (tipoFiltro === 'ultimos_7_dias') {
+        desde.setDate(hoy.getDate() - 7);
+    } else if (tipoFiltro === 'este_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    } else if (tipoFiltro === 'ultimo_mes') {
+        desde = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+        hasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0); // El día 0 es el último día del mes anterior
     }
+    
+    return { desde: formatoFechaSQL(desde), hasta: formatoFechaSQL(hasta) };
 }
 
-function iniciarPollWhatsApp() {
-    detenerPollWhatsApp();
-    configWaPollInterval = setInterval(() => {
-        actualizarEstadoWhatsApp();
-    }, 2500);
-}
+// Llama al servidor y actualiza las tarjetitas
+async function cargarDatosDashboard(desdeCustom = null, hastaCustom = null) {
+    let desde, hasta;
 
-function actualizarUiQrWhatsApp(status) {
-    const qrContainer = document.getElementById('configQrContainer');
-    const qrEspera = document.getElementById('configQrEspera');
-    const qrConectado = document.getElementById('configQrConectado');
-    const qrEsperaTexto = document.getElementById('configQrEsperaTexto');
-
-    if (qrContainer) qrContainer.style.display = 'none';
-    if (qrConectado) qrConectado.style.display = 'none';
-    if (qrEspera) qrEspera.style.display = 'none';
-
-    if (status === 'ready') {
-        if (qrConectado) qrConectado.style.display = 'block';
-        detenerPollWhatsApp();
-        return;
-    }
-
-    if (status === 'disabled') {
-        if (qrEspera) {
-            qrEspera.style.display = 'flex';
-            if (qrEsperaTexto) qrEsperaTexto.textContent = 'WhatsApp deshabilitado en el servidor (WHATSAPP_ENABLED=false).';
-        }
-        detenerPollWhatsApp();
-        return;
-    }
-
-    if (status === 'qr') {
-        renderizarQrWhatsApp();
-        return;
-    }
-
-    if (status === 'connecting' || status === 'disconnected' || status === 'error') {
-        if (qrEspera) {
-            qrEspera.style.display = 'flex';
-            const textos = {
-                connecting: 'Conectando con WhatsApp...',
-                disconnected: 'Desconectado. Tocá «Reiniciar conexión» para generar un QR.',
-                error: 'Error de conexión. Probá «Borrar sesión y reconectar».'
-            };
-            if (qrEsperaTexto) qrEsperaTexto.textContent = textos[status] || 'Verificando estado...';
-        }
-    }
-}
-
-async function renderizarQrWhatsApp() {
-    const qrContainer = document.getElementById('configQrContainer');
-    const qrEspera = document.getElementById('configQrEspera');
-    const qrEsperaTexto = document.getElementById('configQrEsperaTexto');
-    const qrImage = document.getElementById('configQrImage');
-
-    if (!qrContainer) return;
-
-    try {
-        const respuesta = await fetch(`${API_BASE}/whatsapp/qr`);
-        const data = respuesta.ok ? await respuesta.json() : null;
-
-        if (data?.qr_image && qrImage) {
-            if (qrEspera) qrEspera.style.display = 'none';
-            qrContainer.style.display = 'block';
-            qrImage.src = data.qr_image;
-            qrImage.style.display = 'block';
-            return;
-        }
-
-        if (data?.status === 'qr') {
-            if (qrEspera) {
-                qrEspera.style.display = 'flex';
-                if (qrEsperaTexto) qrEsperaTexto.textContent = 'Generando código QR...';
-            }
-            qrContainer.style.display = 'none';
-            return;
-        }
-
-        qrContainer.style.display = 'none';
-    } catch (error) {
-        console.error('Error renderizando QR:', error);
-        if (qrEspera) {
-            qrEspera.style.display = 'flex';
-            if (qrEsperaTexto) qrEsperaTexto.textContent = 'Error al cargar el QR. Tocá «Actualizar estado».';
-        }
-    }
-}
-
-function getConfigLocal() {
-    try {
-        return JSON.parse(localStorage.getItem(CONFIG_STORAGE_KEY)) || {};
-    } catch {
-        return {};
-    }
-}
-
-function setConfigLocal(data) {
-    localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify({ ...getConfigLocal(), ...data }));
-}
-
-function cambiarTabConfig(tab) {
-    document.querySelectorAll('.config-tabs .btn-tab').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.configTab === tab);
-    });
-
-    const paneles = {
-        general: 'configPanelGeneral',
-        whatsapp: 'configPanelWhatsapp',
-        servicios: 'configPanelServicios',
-        agenda: 'configPanelAgenda'
-    };
-
-    Object.entries(paneles).forEach(([id, panelId]) => {
-        const panel = document.getElementById(panelId);
-        if (panel) panel.classList.toggle('config-panel-active', id === tab);
-    });
-
-    if (tab === 'whatsapp') {
-        actualizarEstadoWhatsApp();
-        iniciarPollWhatsApp();
+    if (desdeCustom && hastaCustom) {
+        // Si usamos el calendario de rango (Flatpickr)
+        desde = desdeCustom;
+        hasta = hastaCustom;
     } else {
-        detenerPollWhatsApp();
-    }
-    if (tab === 'servicios') cargarCatalogoConfig();
-}
-
-function formatearEstadoWhatsApp(status) {
-    const mapa = {
-        ready: { texto: '● Conectado', clase: 'config-badge--ok' },
-        connecting: { texto: '● Conectando...', clase: 'config-badge--pending' },
-        qr: { texto: '● Esperando QR', clase: 'config-badge--pending' },
-        disconnected: { texto: '● Desconectado', clase: 'config-badge--error' },
-        error: { texto: '● Error', clase: 'config-badge--error' },
-        disabled: { texto: '● Deshabilitado', clase: 'config-badge--off' }
-    };
-    return mapa[status] || { texto: '● ' + status, clase: 'config-badge--off' };
-}
-
-function actualizarBadgeWhatsApp(status) {
-    const badge = document.getElementById('configWaBadge');
-    if (!badge) return;
-    const { texto, clase } = formatearEstadoWhatsApp(status);
-    badge.textContent = texto;
-    badge.className = 'config-badge ' + clase;
-}
-
-function armarPreviewRecordatorio(nombreLocal, direccion) {
-    const ahora = new Date();
-    ahora.setDate(ahora.getDate() + 1);
-    ahora.setHours(10, 30, 0, 0);
-
-    const fecha = ahora.toLocaleDateString('es-AR', {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-    });
-    const hora = ahora.toLocaleTimeString('es-AR', {
-        hour: '2-digit', minute: '2-digit', hour12: false
-    });
-
-    return (
-        `Hola Ana! 💅\n\n` +
-        `Te recordamos tu turno en *${nombreLocal || 'EMME Beauty'}*:\n\n` +
-        `💅 Manicura Semipermanente\n` +
-        `👤 Con Mili\n` +
-        `📅 ${fecha} a las ${hora}\n` +
-        `📍 ${direccion || '—'}\n\n` +
-        `¡Te esperamos!\n` +
-        `— ${nombreLocal || 'EMME Beauty'}`
-    );
-}
-
-async function actualizarEstadoWhatsApp() {
-    const perfilEl = document.getElementById('configWaPerfil');
-    const numeroEl = document.getElementById('configWaNumero');
-    const dbEl = document.getElementById('configDbEstado');
-    const previewEl = document.getElementById('configPreviewMensaje');
-
-    try {
-        const [healthRes, waRes] = await Promise.all([
-            fetch(`${API_BASE.replace('/api', '')}/api/health`),
-            fetch(`${API_BASE}/whatsapp/info`)
-        ]);
-
-        const health = healthRes.ok ? await healthRes.json() : null;
-        const waInfo = waRes.ok ? await waRes.json() : null;
-
-        const status = waInfo?.status || health?.whatsapp || 'disconnected';
-        actualizarBadgeWhatsApp(status);
-        actualizarUiQrWhatsApp(status);
-
-        if (perfilEl) {
-            perfilEl.textContent = waInfo?.cuenta?.nombre_perfil || health?.emme?.nombre_perfil || '—';
-        }
-        if (numeroEl) {
-            numeroEl.textContent = waInfo?.cuenta?.numero || health?.emme?.numero || '—';
-        }
-        if (dbEl) {
-            dbEl.textContent = health?.database === 'connected' ? 'Conectada' : 'Modo demo';
-        }
-
-        const nombreLocal = document.getElementById('configNombreLocal')?.value
-            || waInfo?.negocio
-            || health?.emme?.negocio_configurado
-            || 'EMME Beauty';
-        const direccion = waInfo?.direccion
-            || health?.emme?.direccion
-            || document.getElementById('configDireccion')?.value
-            || '';
-
-        const direccionInput = document.getElementById('configDireccion');
-        if (direccionInput && (waInfo?.direccion || health?.emme?.direccion)) {
-            direccionInput.value = waInfo?.direccion || health.emme.direccion;
-        }
-
-        if (previewEl) {
-            previewEl.textContent = armarPreviewRecordatorio(nombreLocal, direccion);
-        }
-
-        if (status === 'qr') {
-            await renderizarQrWhatsApp();
-        }
-    } catch (error) {
-        console.error('Error obteniendo estado WhatsApp:', error);
-        actualizarBadgeWhatsApp('error');
-        actualizarUiQrWhatsApp('error');
-        if (previewEl) previewEl.textContent = 'No se pudo conectar con el servidor.';
-    }
-}
-
-async function reiniciarWhatsApp(limpiarSesion) {
-    const mensajeConfirmacion = limpiarSesion
-        ? '¿Borrar la sesión de WhatsApp y generar un código QR nuevo? Vas a tener que escanearlo de nuevo.'
-        : '¿Reiniciar la conexión de WhatsApp?';
-
-    const confirmado = await pedirConfirmacion(mensajeConfirmacion);
-    if (!confirmado) return;
-
-    try {
-        const respuesta = await fetch(`${API_BASE}/whatsapp/reiniciar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ limpiar_sesion: limpiarSesion })
-        });
-
-        const data = await respuesta.json();
-
-        if (respuesta.ok) {
-            mostrarNotificacion(data.mensaje || 'Reinicio iniciado.', 'warning');
-            iniciarPollWhatsApp();
-            setTimeout(() => actualizarEstadoWhatsApp(), 1500);
+        // Si usamos el menú desplegable rápido
+        const selectFiltro = document.getElementById('filtroRapidoDash');
+        if (selectFiltro && selectFiltro.value !== 'personalizado') {
+            const fechas = obtenerFechasFiltroRapido(selectFiltro.value);
+            desde = fechas.desde;
+            hasta = fechas.hasta;
         } else {
-            mostrarNotificacion(data.error || 'No se pudo reiniciar WhatsApp.', 'error');
+            return; // Está en 'personalizado' pero aún no eligió fechas, no hacemos nada
         }
+    }
+
+    try {
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/kpis?desde=${desde}&hasta=${hasta}`);
+        const kpis = await respuesta.json();
+
+        // Actualizamos el HTML formateando los números con separadores de miles
+        document.getElementById('dashIngresos').textContent = `$${kpis.Ingresos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGastos').textContent = `$${kpis.Gastos.toLocaleString('es-AR')}`;
+        document.getElementById('dashSueldos').textContent = `$${kpis.Sueldos.toLocaleString('es-AR')}`;
+        document.getElementById('dashGanancia').textContent = `$${kpis.GananciaNeta.toLocaleString('es-AR')}`;
+
+        // Llamamos a que se dibuje el gráfico con las mismas fechas
+        cargarGraficoDashboard(desde, hasta);
+
     } catch (error) {
-        console.error('Error reiniciando WhatsApp:', error);
-        mostrarNotificacion('Error de conexión con el servidor.', 'error');
+        console.error("Error cargando métricas del dashboard:", error);
     }
 }
 
-async function cargarDatosGeneralesConfig() {
-    const local = getConfigLocal();
+// Variables globales para guardar los gráficos
+let graficoIngresosInstancia = null;
+let graficoTurnosInstancia = null;
+let graficoServiciosInstancia = null;
 
-    document.getElementById('configTelefono').value = local.telefono || '';
-    document.getElementById('configInstagram').value = local.instagram || '';
-    document.getElementById('configDescripcion').value = local.descripcion || '';
-    document.getElementById('configHorasRecordatorio').value = local.horasRecordatorio || 24;
-
-    let nombreLocal = '';
-    let direccion = '';
-
+// Llama al servidor y dibuja AMBOS gráficos
+async function cargarGraficoDashboard(desde, hasta) {
     try {
-        const respuesta = await fetch(`${API_BASE}/whatsapp/info`);
-        if (respuesta.ok) {
-            const data = await respuesta.json();
-            if (data.negocio) nombreLocal = data.negocio;
-            if (data.direccion) direccion = data.direccion;
-        }
-    } catch { /* silencioso */ }
+        const respuesta = await fetch(`http://localhost:3000/api/dashboard/grafico-ingresos?desde=${desde}&hasta=${hasta}`);
+        
+        if (!respuesta.ok) return;
 
-    try {
-        const respuesta = await fetch(`${API_BASE.replace('/api', '')}/api/health`);
-        if (respuesta.ok) {
-            const health = await respuesta.json();
-            if (health.emme?.negocio_configurado) nombreLocal = health.emme.negocio_configurado;
-            if (health.emme?.direccion) direccion = health.emme.direccion;
-        }
-    } catch { /* silencioso */ }
+        const datos = await respuesta.json();
 
-    document.getElementById('configNombreLocal').value = nombreLocal;
+        // ==========================================
+        // DATOS PARA GRÁFICO 1 (Ingresos por fecha)
+        // ==========================================
+        const etiquetasIngresos = datos.map(d => d.Dia);
+        const valoresIngresos = datos.map(d => d.Total);
 
-    const direccionInput = document.getElementById('configDireccion');
-    direccionInput.value = direccion;
+        // ==========================================
+        // DATOS PARA GRÁFICO 2 (Turnos por Día Fijo)
+        // ==========================================
+        const diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+        const valoresTurnos = [0, 0, 0, 0, 0, 0, 0]; // Empezamos todo en cero
 
-    const previewEl = document.getElementById('configPreviewMensaje');
-    if (previewEl) {
-        previewEl.textContent = armarPreviewRecordatorio(nombreLocal, direccion);
-    }
-}
-
-function cargarDatosAgendaConfig() {
-    const local = getConfigLocal();
-    const agenda = local.agenda || {};
-
-    document.getElementById('configApertura').value = agenda.apertura || '09:30';
-    document.getElementById('configCierre').value = agenda.cierre || '21:30';
-    document.getElementById('configBloque').value = agenda.bloque || '30';
-
-    const diasActivos = new Set(agenda.dias || [1, 2, 3, 4, 5, 6]);
-    document.querySelectorAll('.config-dia').forEach((btn) => {
-        const dia = parseInt(btn.dataset.dia, 10);
-        btn.classList.toggle('active', diasActivos.has(dia));
-    });
-}
-
-async function cargarCatalogoConfig() {
-    const tbodyServicios = document.getElementById('configTablaServicios');
-    const tbodyExtras = document.getElementById('configTablaExtras');
-
-    try {
-        const [serviciosRes, extrasRes] = await Promise.all([
-            fetch(`${API_BASE}/servicios`),
-            fetch(`${API_BASE}/extras`)
-        ]);
-
-        const servicios = serviciosRes.ok ? await serviciosRes.json() : [];
-        const extras = extrasRes.ok ? await extrasRes.json() : [];
-
-        if (tbodyServicios) {
-            if (servicios.length === 0) {
-                tbodyServicios.innerHTML = '<tr><td class="config-table-empty">No hay servicios registrados.</td></tr>';
-            } else {
-                tbodyServicios.innerHTML = servicios.map((s) =>
-                    `<tr><td>${s.Nombre}</td></tr>`
-                ).join('');
+        // Recorremos los datos de la base de datos y los acomodamos en su día correspondiente
+        datos.forEach(d => {
+            if (d.Turnos > 0) {
+                // Le agregamos la hora T00:00:00 para evitar que JavaScript se confunda con la zona horaria
+                const fechaObj = new Date(d.FechaCompleta + 'T00:00:00');
+                let diaIdx = fechaObj.getDay(); // JS nos devuelve: 0 = Domingo, 1 = Lunes, etc.
+                
+                // Lo acomodamos para que encaje con nuestro array (Lunes = 0, Domingo = 6)
+                diaIdx = diaIdx === 0 ? 6 : diaIdx - 1;
+                
+                // Sumamos los turnos de esa fecha a la cajita de su día
+                valoresTurnos[diaIdx] += d.Turnos;
             }
-        }
+        });
 
-        if (tbodyExtras) {
-            if (extras.length === 0) {
-                tbodyExtras.innerHTML = '<tr><td colspan="2" class="config-table-empty">No hay extras registrados.</td></tr>';
-            } else {
-                tbodyExtras.innerHTML = extras.map((e) =>
-                    `<tr>
-                        <td>${e.Nombre}</td>
-                        <td style="text-align: right; font-weight: 500; color: var(--mostaza);">$${Number(e.Precio).toLocaleString('es-AR')}</td>
-                    </tr>`
-                ).join('');
+        // ==========================================
+        // 1. GRÁFICO DE INGRESOS (Ola Mostaza)
+        // ==========================================
+        const ctxIngresos = document.getElementById('graficoIngresos').getContext('2d');
+        if (graficoIngresosInstancia) graficoIngresosInstancia.destroy();
+
+        graficoIngresosInstancia = new Chart(ctxIngresos, {
+            type: 'line', 
+            data: {
+                labels: etiquetasIngresos,
+                datasets: [{
+                    label: 'Ingresos ($)',
+                    data: valoresIngresos,
+                    borderColor: '#D4A347', 
+                    backgroundColor: 'rgba(212, 163, 71, 0.2)', 
+                    borderWidth: 3,
+                    tension: 0.4, 
+                    fill: true, 
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#D4A347',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { callback: function(value) { return '$' + value.toLocaleString('es-AR'); } }
+                    },
+                    x: { grid: { display: false } }
+                }
             }
+        });
+
+        // ==========================================
+        // 2. GRÁFICO DE TURNOS (Barras Fijas L a D)
+        // ==========================================
+        const ctxTurnos = document.getElementById('graficoTurnos').getContext('2d');
+        if (graficoTurnosInstancia) graficoTurnosInstancia.destroy();
+
+        graficoTurnosInstancia = new Chart(ctxTurnos, {
+            type: 'bar', 
+            data: {
+                labels: diasSemana, 
+                datasets: [{
+                    label: 'Cantidad de Turnos',
+                    data: valoresTurnos, 
+                    backgroundColor: '#daab53', // ¡ACÁ ESTÁ EL COLOR ARENA/NUDE!
+                    borderRadius: 6 
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f0f0f0' },
+                        ticks: { stepSize: 1 } 
+                    },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // ==========================================
+        // 3. GRÁFICO DE SERVICIOS ESTRELLA (Horizontal)
+        // ==========================================
+        const respServicios = await fetch(`http://localhost:3000/api/dashboard/servicios-estrella?desde=${desde}&hasta=${hasta}`);
+        if (respServicios.ok) {
+            const datosServicios = await respServicios.json();
+            
+            const etiquetasServicios = datosServicios.map(d => d.Nombre);
+            const valoresCantidades = datosServicios.map(d => d.Cantidad);
+
+            const ctxServicios = document.getElementById('graficoServicios').getContext('2d');
+            if (graficoServiciosInstancia) graficoServiciosInstancia.destroy();
+
+            graficoServiciosInstancia = new Chart(ctxServicios, {
+                type: 'bar', 
+                data: {
+                    labels: etiquetasServicios,
+                    datasets: [{
+                        label: 'Veces realizado',
+                        data: valoresCantidades,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)', // El verde de la "Ganancia Neta"
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // ESTO ES LA MAGIA QUE LO HACE HORIZONTAL
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: '#f0f0f0' },
+                            ticks: { stepSize: 1 }
+                        },
+                        y: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
         }
+
     } catch (error) {
-        console.error('Error cargando catálogo:', error);
-        if (tbodyServicios) {
-            tbodyServicios.innerHTML = '<tr><td class="config-table-empty">Error al cargar servicios.</td></tr>';
-        }
-        if (tbodyExtras) {
-            tbodyExtras.innerHTML = '<tr><td colspan="2" class="config-table-empty">Error al cargar extras.</td></tr>';
-        }
+        console.error("Error cargando los gráficos:", error);
     }
 }
-
-function guardarConfigGeneral() {
-    setConfigLocal({
-        telefono: document.getElementById('configTelefono').value.trim(),
-        instagram: document.getElementById('configInstagram').value.trim(),
-        descripcion: document.getElementById('configDescripcion').value.trim(),
-        horasRecordatorio: parseInt(document.getElementById('configHorasRecordatorio').value, 10) || 24
-    });
-
-    mostrarNotificacion('Configuración general guardada.', 'success');
-}
-
-function guardarConfigAgenda() {
-    const dias = [];
-    document.querySelectorAll('.config-dia.active').forEach((btn) => {
-        dias.push(parseInt(btn.dataset.dia, 10));
-    });
-
-    setConfigLocal({
-        agenda: {
-            apertura: document.getElementById('configApertura').value,
-            cierre: document.getElementById('configCierre').value,
-            bloque: document.getElementById('configBloque').value,
-            dias
-        }
-    });
-
-    mostrarNotificacion('Preferencias de agenda guardadas.', 'success');
-}
-
-async function enviarMensajePruebaWhatsApp() {
-    const telefono = document.getElementById('configPruebaTelefono').value.trim();
-    const nombre = document.getElementById('configPruebaNombre').value.trim() || 'Prueba';
-
-    if (!telefono) {
-        mostrarNotificacion('Ingresá un teléfono para la prueba.', 'warning');
-        return;
-    }
-
-    try {
-        const respuesta = await fetch(`${API_BASE}/whatsapp/probar`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ telefono, nombre })
-        });
-
-        const data = await respuesta.json();
-
-        if (respuesta.ok) {
-            mostrarNotificacion('Mensaje de prueba enviado correctamente.', 'success');
-        } else {
-            mostrarNotificacion(data.error || 'No se pudo enviar el mensaje.', 'error');
-        }
-    } catch (error) {
-        console.error('Error enviando prueba WhatsApp:', error);
-        mostrarNotificacion('Error de conexión con el servidor.', 'error');
-    }
-}
-
-function cargarSeccionConfiguracion() {
-    cargarDatosGeneralesConfig();
-    cargarDatosAgendaConfig();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.config-dia').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            btn.classList.toggle('active');
-        });
-    });
-
-    const horasInput = document.getElementById('configHorasRecordatorio');
-    if (horasInput) {
-        horasInput.addEventListener('change', () => {
-            setConfigLocal({ horasRecordatorio: parseInt(horasInput.value, 10) || 24 });
-        });
-    }
-});
