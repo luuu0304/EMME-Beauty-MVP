@@ -8,7 +8,8 @@
     "gasto": 0,
     "extra": 6,
     "ingreso": 0,
-    "turno_extra": 0
+    "turno_extra": 0,
+    "liquidacion": 0
   },
   "clientas": [
     { "Id_Clienta": 1, "Nombre": "Ana", "Apellido": "Perez", "Fecha_Nac": "1995-04-12", "Telefono": "3875123456", "Ig": "@ana.perez" },
@@ -20,10 +21,10 @@
     { "Id_Empleada": 2, "DNI": "31222333", "Nombre_Ap": "Meli", "Telefono": "3874222222" }
   ],
   "servicios": [
-    { "Id_Servicio": 1, "Nombre": "Kapping Gel", "Precio_Base": 12000, "Duracion_Minutos": 90 },
-    { "Id_Servicio": 2, "Nombre": "Service Kapping", "Precio_Base": 10000, "Duracion_Minutos": 75 },
-    { "Id_Servicio": 3, "Nombre": "Manicura Semipermanente", "Precio_Base": 8000, "Duracion_Minutos": 60 },
-    { "Id_Servicio": 4, "Nombre": "Lifting de Pestañas", "Precio_Base": 9500, "Duracion_Minutos": 60 }
+    { "Id_Servicio": 1, "Nombre": "Kapping Gel", "Precio_Base": 12000, "Duracion_Minutos": 90, "Area": "Manicura" },
+    { "Id_Servicio": 2, "Nombre": "Service Kapping", "Precio_Base": 10000, "Duracion_Minutos": 75, "Area": "Manicura" },
+    { "Id_Servicio": 3, "Nombre": "Manicura Semipermanente", "Precio_Base": 8000, "Duracion_Minutos": 60, "Area": "Manicura" },
+    { "Id_Servicio": 4, "Nombre": "Lifting de Pestañas", "Precio_Base": 9500, "Duracion_Minutos": 60, "Area": "Cejas y Pestañas" }
   ],
   "categorias_gasto": [
     { "Id_Categoria": 1, "Nombre": "Insumos del Local" },
@@ -43,5 +44,12 @@
   "gastos": [],
   "ingresos": [],
   "turno_extra": [],
-  "turnos": []
+  "turnos": [],
+  "empleada_area": [
+    { "Id_Empleada": 1, "Area": "Manicura", "Porcentaje_Comision": 0.5 },
+    { "Id_Empleada": 1, "Area": "Cejas y Pestañas", "Porcentaje_Comision": 0.5 },
+    { "Id_Empleada": 2, "Area": "Manicura", "Porcentaje_Comision": 0.5 },
+    { "Id_Empleada": 2, "Area": "Cejas y Pestañas", "Porcentaje_Comision": 0.5 }
+  ],
+  "liquidaciones": []
 }

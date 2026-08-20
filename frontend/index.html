@@ -6,13 +6,31 @@
     <title>EMME Beauty - Gestión</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <link rel="stylesheet" href="styles.css">
+
+    <!-- Flatpickr (Calendario de Rango) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
+
+    <!-- Chart.js (Para los gráficos) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
+    <!-- =========================================================================
+         ÍNDICE DEL DOCUMENTO HTML
+         1. BARRA LATERAL (Sidebar)
+         2. CABECERA PRINCIPAL (Header)
+         3. SECCIONES CENTRALES (Turnos, Clientas, Empleados, Gastos, Ingresos)
+         4. VENTANAS MODALES
+         5. COMPONENTES GLOBALES (Toasts, Scripts)
+         ========================================================================= -->
 
+    <!-- =========================================================================
+         1. BARRA LATERAL (Sidebar)
+         ========================================================================= -->
     <aside class="sidebar">
         <div class="logo-text">EMME</div>
         <div class="menu-item active">Turnos</div>
@@ -25,29 +43,34 @@
     </aside>
 
     <main class="main-content">
+        <!-- =========================================================================
+             2. CABECERA PRINCIPAL (Header)
+             ========================================================================= -->
         <div class="header">
             <h1>Gestión de Turnos</h1>
             <div class="header-actions">
+                <!-- Buscadores -->
                 <input type="text" id="buscadorClientas" placeholder="Buscar clienta..." style="display: none;">
-                
+                <input type="text" id="buscadorEmpleadas" placeholder="Buscar profesional..." style="display: none; padding: 10px 16px; font-size: 14px; border: 1px solid #e0e0e0; border-radius: 8px; outline: none;">
+
+                <!-- Botones Principales -->
                 <button class="btn-primary" id="btnNuevaClienta" onclick="prepararNuevaClienta()" style="display: none;">+ Nueva Clienta</button>
-                
                 <button class="btn-primary" id="btnNuevoTurno" onclick="abrirModalTurno()">+ Nuevo Turno</button>
-
                 <button class="btn-primary" id="btnNuevaEmpleada" onclick="prepararNuevaEmpleada()" style="display: none;">+ Nueva Empleada</button>
-
                 <button class="btn-primary" id="btnNuevoGasto" onclick="prepararNuevoGasto()" style="display: none;">+ Nuevo Gasto</button>
+                <button class="btn-primary" id="btnNuevoIngreso" onclick="abrirModalNuevoIngreso()" style="display: none;">+ Nuevo Ingreso</button>
             </div>
         </div>
 
-        <!-- SECCIÓN TURNOS -->
+        <!-- =========================================================================
+             3. SECCIONES CENTRALES
+             ========================================================================= -->
+        
+        <!-- 3.1. SECCIÓN: TURNOS -->
         <div id="seccionTurnos" class="seccion-activa">
-            
-            <!-- Cabecera Principal y Toggle -->
             <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                 <div>
                     <h2>Vistas de la Agenda</h2>
-                    <!-- Botonera para cambiar de vista -->
                     <div style="margin-top: 15px; display: flex; gap: 10px;">
                         <button id="btnVistaDiaria" class="btn-tab active" onclick="cambiarVistaAgenda('diaria')">Agenda Diaria</button>
                         <button id="btnVistaSemanal" class="btn-tab" onclick="cambiarVistaAgenda('semanal')">Agenda Semanal</button>
@@ -57,21 +80,32 @@
 
             <!-- VISTA 1: AGENDA DIARIA -->
             <div id="vistaDiaria" style="display: block;">
-                <!-- Controles de Fecha (solo para la diaria) -->
-                <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px; background: white; padding: 10px 15px; border-radius: 8px; width: fit-content; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <button class="btn-icon" id="btnDiaAnterior">◀</button>
-                    <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
-                    <button class="btn-icon" id="btnDiaSiguiente">▶</button>
+                
+                <!-- BARRA DE CONTROLES SUPERIOR (En la misma línea) -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    
+                    <!-- Controles de Fecha (Izquierda) -->
+                    <div class="controles-agenda" style="display: flex; align-items: center; gap: 10px; background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <button class="btn-icon" id="btnDiaAnterior">◀</button>
+                        <input type="date" id="fechaAgendaInput" style="padding: 8px; border: 1px solid #ccc; border-radius: 8px; font-family: inherit;">
+                        <button class="btn-icon" id="btnDiaSiguiente">▶</button>
+                    </div>
+                    
+                    <!-- Filtros por Especialidad (Derecha) -->
+                    <div id="filtrosEspecialidad" style="display: flex; gap: 10px; padding: 10px; background: #f8f9fa; border-radius: 8px; align-items: center;">
+                        <span style="font-weight: 500; font-size: 14px;">Filtrar por:</span>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Todo', this)" style="border-radius: 20px; background: #e2e3e5; border: none; padding: 6px 15px; cursor: pointer;">Todo</button>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Manicura', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Manicura</button>
+                        <button class="btn-secundario filtro-btn" onclick="filtrarAgendaPorArea('Cejas y Pestañas', this)" style="border-radius: 20px; background: white; border: 1px solid #ccc; padding: 6px 15px; cursor: pointer;">Cejas y Pestañas</button>
+                    </div>
+                    
                 </div>
 
-                <!-- Grilla del Calendario -->
                 <div class="agenda-container">
                     <div class="agenda-header" id="agendaHeader">
                         <div class="hora-col">Hora</div>
-                        <!-- JavaScript inyectará a las profesionales acá -->
                     </div>
                     <div class="agenda-body" id="agendaBody">
-                        <!-- JavaScript inyectará las horas acá -->
                     </div>
                 </div>
             </div>
@@ -83,26 +117,19 @@
                     <p>Acá va a ir tu calendario de Lunes a Sábado.</p>
                 </div>
             </div>
-            
-        </div> <!-- Cierre de seccionTurnos -->
+        </div>
 
-        <!-- ========================================================================= -->
-        <!-- SECCIÓN CLIENTAS (MODIFICADA CON BOTONES, TARJETAS Y LISTA)               -->
-        <!-- ========================================================================= -->
+        <!-- 3.2. SECCIÓN: CLIENTAS -->
         <div id="seccionClientas" style="display: none;">
-            
-            <!-- Botones para cambiar la vista -->
             <div style="margin-bottom: 20px; display: flex; gap: 10px;">
                 <button id="btnVistaTarjetas" class="btn-tab active" onclick="cambiarVistaClientas('tarjetas')">Vista Tarjetas</button>
                 <button id="btnVistaLista" class="btn-tab" onclick="cambiarVistaClientas('lista')">Vista Lista</button>
             </div>
 
-            <!-- 1. CONTENEDOR DE TARJETAS (Visible por defecto) -->
-            <div id="vistaClientasTarjetas" class="cards-grid">
-                <!-- El JavaScript inyecta las tarjetas acá -->
-            </div>
+            <!-- VISTA TARJETAS -->
+            <div id="vistaClientasTarjetas" class="cards-grid"></div>
 
-            <!-- 2. CONTENEDOR DE LISTA (Oculto por defecto) -->
+            <!-- VISTA LISTA -->
             <div id="vistaClientasListado" style="display: none; overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                     <thead style="background-color: #2c3e50; color: white;">
@@ -114,64 +141,61 @@
                             <th style="padding: 12px 15px; text-align: center;">Acciones</th>
                         </tr>
                     </thead>
-                    <tbody id="tablaClientasBody">
-                        <!-- El JavaScript inyecta las filas acá -->
-                    </tbody>
+                    <tbody id="tablaClientasBody"></tbody>
                 </table>
             </div>
-
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- FIN SECCIÓN CLIENTAS                                                      -->
-        <!-- ========================================================================= -->
-
-
+        <!-- 3.3. SECCIÓN: EMPLEADOS -->
         <div id="seccionEmpleados" style="display: none;">
-            <div class="cards-grid" id="contenedorEmpleadas">
-                <!-- Se llena automáticamente con JavaScript -->
-            </div>
+            <div class="cards-grid" id="contenedorEmpleadas"></div>
         </div>
 
-        <!-- SECCIÓN GASTOS -->
+        <!-- 3.4. SECCIÓN: GASTOS -->
         <div id="seccionGastos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px;">Gestione los gastos diarios del local.</p>
                     
-                    <!-- BARRA DE FILTROS -->
-                    <div style="display: flex; gap: 15px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee;">
-                        <span style="font-size: 13px; color: #555; font-weight: bold;">Filtros:</span>
-
-                        <!-- Anio -->
-                         <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; background: white;">
-                            <option value="todos">Todos los años</option>
-                            <option value="2026" selected>2026</option> <!-- Por defecto el año actual -->
-                            <option value="2025">2025</option>
-                        </select>
-
-                        <!-- Mes --> 
-                        <select id="filtroMesGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
-                            <option value="todos">Todos los meses</option>
-                            <option value="0">Enero</option>
-                            <option value="1">Febrero</option>
-                            <option value="2">Marzo</option>
-                            <option value="3">Abril</option>
-                            <option value="4">Mayo</option>
-                            <option value="5">Junio</option>
-                            <option value="6">Julio</option>
-                            <option value="7">Agosto</option>
-                            <option value="8">Septiembre</option>
-                            <option value="9">Octubre</option>
-                            <option value="10">Noviembre</option>
-                            <option value="11">Diciembre</option>
-                        </select>
-
-                        <!-- Categoria-->
-                        <select id="filtroCategoriaGasto" onchange="aplicarFiltrosGastos()" style="padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px;">
+                    <!-- BLOQUE DE FILTROS GASTOS -->
+                    <div style="display: flex; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee; flex-wrap: wrap;">
+                        
+                        <select id="filtroCategoriaGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px; min-width: 180px;">
                             <option value="todas">Todas las categorías</option>
-                            <!-- Se llenará con JS -->
                         </select>
+
+                        <div style="width: 1px; height: 30px; background-color: #ddd; margin: 0 5px;"></div>
+
+                        <select id="modoFechaGastos" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-weight: 500;">
+                            <option value="mes">Por Mes y Año</option>
+                            <option value="rango">Rango Personalizado</option>
+                        </select>
+
+                        <div id="contenedorMesGastos" style="display: flex; gap: 10px;">
+                            <select id="filtroAnioGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                                <option value="todos">Todos los años</option>
+                                <option value="2026" selected>2026</option>
+                                <option value="2025">2025</option>
+                            </select>
+                            <select id="filtroMesGasto" onchange="aplicarFiltrosGastos()" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px;">
+                                <option value="todos">Todos los meses</option>
+                                <option value="0">Enero</option>
+                                <option value="1">Febrero</option>
+                                <option value="2">Marzo</option>
+                                <option value="3">Abril</option>
+                                <option value="4">Mayo</option>
+                                <option value="5">Junio</option>
+                                <option value="6">Julio</option>
+                                <option value="7">Agosto</option>
+                                <option value="8">Septiembre</option>
+                                <option value="9">Octubre</option>
+                                <option value="10">Noviembre</option>
+                                <option value="11">Diciembre</option>
+                            </select>
+                        </div>
+
+                        <input type="text" id="rangoFechaGastos" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 220px;">
                     </div>
                 </div>
                 
@@ -187,28 +211,58 @@
                     </thead>
                     <tbody id="tablaGastosBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">
-                                Cargando gastos...
-                            </td>
+                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando gastos...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
         
-        <!-- SECCIÓN INGRESOS -->
+        <!-- 3.5. SECCIÓN: INGRESOS -->
         <div id="seccionIngresos" style="display: none;">
             <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <p style="color: #666; font-size: 14px;">Registro de todos los cobros realizados.</p>
                 </div>
 
-                <div style="margin-bottom: 15px; display: flex; gap: 15px; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; gap: 15px; align-items: center; flex: 1;">
-                        <input type="text" id="filtroIngresos" onkeyup="filtrarIngresos()" placeholder="🔍 Buscar por clienta, servicio, pago..." style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px;">
-                        <input type="date" id="filtroFechaIngresos" onchange="filtrarIngresos()" style="padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; color: #555;">
+                <!-- BLOQUE DE FILTROS INGRESOS -->
+                <div style="display: flex; gap: 10px; align-items: center; background: #f8f9fa; padding: 10px 15px; border-radius: 8px; border: 1px solid #eee; margin-bottom: 20px; flex-wrap: wrap;">
+                    
+                    <!-- Buscador de texto libre exclusivo de ingresos -->
+                    <input type="text" id="buscadorIngresosTexto" onkeyup="filtrarIngresos()" placeholder="🔍 Buscar clienta, servicio, pago..." style="flex: 1; min-width: 200px; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px;">
+
+                    <div style="width: 1px; height: 30px; background-color: #ddd; margin: 0 5px;"></div>
+
+                    <select id="modoFechaIngresos" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-weight: 500;">
+                        <option value="mes">Por Mes y Año</option>
+                        <option value="rango">Rango Personalizado</option>
+                    </select>
+
+                    <div id="contenedorMesIngresos" style="display: flex; gap: 10px;">
+                        <select id="filtroAnioIngreso" onchange="filtrarIngresos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                            <option value="todos">Todos los años</option>
+                            <option value="2026" selected>2026</option>
+                            <option value="2025">2025</option>
+                        </select>
+                        <select id="filtroMesIngreso" onchange="filtrarIngresos()" style="padding: 8px; border-radius: 6px; border: 1px solid #ccc;">
+                            <option value="todos">Todos los meses</option>
+                            <option value="0">Enero</option>
+                            <option value="1">Febrero</option>
+                            <option value="2">Marzo</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Mayo</option>
+                            <option value="5">Junio</option>
+                            <option value="6">Julio</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Septiembre</option>
+                            <option value="9">Octubre</option>
+                            <option value="10">Noviembre</option>
+                            <option value="11">Diciembre</option>
+                        </select>
                     </div>
-                    <button onclick="abrirModalNuevoIngreso()" style="background:#D4A347; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">+ Nuevo Ingreso</button>
+
+                    <input type="text" id="rangoFechaIngresos" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; width: 220px;">
                 </div>
                 
                 <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
@@ -223,13 +277,9 @@
                     </thead>
                     <tbody id="tablaIngresosBody">
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">
-                                Cargando ingresos...
-                            </td>
+                            <td colspan="5" style="text-align: center; padding: 30px; color: #888;">Cargando ingresos...</td>
                         </tr>
                     </tbody>
-                    
-                    <!-- Pie de tabla para el totalizador -->
                     <tfoot style="background-color: #f8f9fa; border-top: 2px solid #ddd;">
                         <tr>
                             <td colspan="4" style="padding: 15px 12px; text-align: right; font-weight: bold; font-size: 15px; color: #333;">Total en pantalla:</td>
@@ -237,6 +287,103 @@
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+        </div>
+
+        <!-- =========================================================================
+             3.6. SECCIÓN: RESÚMENES (DASHBOARD)
+             ========================================================================= -->
+        <div id="seccionResumenes" style="display: none;">
+            
+            <div class="header-seccion" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <div>
+                    <h2>Panel de Control</h2>
+                    <p style="color: #666; font-size: 14px;">Métricas y rendimiento financiero del local</p>
+                </div>
+
+                <!-- FILTRO DE FECHAS (Estilo Opción A) -->
+                <div style="background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: center; border: 1px solid #eee;">
+                    <select id="filtroRapidoDash" style="padding: 8px; border: 1px solid #ccc; border-radius: 6px; outline: none; font-weight: 500; cursor: pointer;">
+                        <option value="este_mes" selected>Este mes</option>
+                        <option value="ultimo_mes">Último mes</option>
+                        <option value="ultimos_7_dias">Últimos 7 días</option>
+                        <option value="hoy">Hoy</option>
+                        <option value="personalizado">Rango personalizado...</option>
+                    </select>
+
+                    <!-- Filtro Flatpickr -->
+                    <input type="text" id="rangoFechasCustomDash" placeholder="Seleccione fechas..." style="display: none; padding: 8px 12px; border: 1px solid #ccc; border-radius: 6px; color: #555; width: 220px; font-family: inherit;">
+                </div>
+            </div>
+
+            <!-- TARJETAS SUPERIORES (KPIs) -->
+            <div class="cards-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 30px;">
+                
+                <!-- Ingresos Brutos -->
+                <div class="card" style="border-left: 4px solid #17a2b8;">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Ingresos Brutos</span>
+                    <h3 id="dashIngresos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Turnos, señas y extras</p>
+                </div>
+
+                <!-- Gastos Operativos -->
+                <div class="card" style="border-left: 4px solid #dc3545;">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Gastos del Local</span>
+                    <h3 id="dashGastos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Insumos y pagos generales</p>
+                </div>
+
+                <!-- Sueldos / Comisiones -->
+                <div class="card" style="border-left: 4px solid var(--mostaza);">
+                    <span style="font-size: 13px; color: #666; font-weight: 500;">Comisiones (Profesionales)</span>
+                    <h3 id="dashSueldos" style="font-size: 28px; margin: 10px 0; color: #333;">$0</h3>
+                    <p style="font-size: 12px; color: #888; margin: 0;">Total acreditado a empleadas</p>
+                </div>
+
+                <!-- Ganancia Neta -->
+                <div class="card" style="background-color: #28a745; color: white; border: none; box-shadow: 0 4px 15px rgba(40,167,69,0.2);">
+                    <span style="font-size: 13px; font-weight: 500; opacity: 0.9;">Ganancia Neta</span>
+                    <h3 id="dashGanancia" style="font-size: 28px; margin: 10px 0; color: white;">$0</h3>
+                    <p style="font-size: 12px; margin: 0; opacity: 0.9;">Lo que queda limpio para el local</p>
+                </div>
+
+            </div>
+
+            <!-- ÁREA CENTRAL: GRÁFICOS Y RANKINGS -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px;">
+                
+                <!-- COLUMNA IZQUIERDA (LOS DOS GRÁFICOS) -->
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    
+                    <!-- Gráfico 1: Ingresos -->
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Ingresos diarios</h3>
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="graficoIngresos"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Turnos -->
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 20px; color: #333;">Movimiento de Turnos</h3>
+                        <div style="position: relative; height: 200px; width: 100%;">
+                            <canvas id="graficoTurnos"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- COLUMNA DERECHA (RANKINGS) -->
+                <div style="display: flex; flex-direction: column; gap: 30px;">
+                    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;">
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: #333;">Servicios Estrella (Top 5)</h3>
+                        
+                        <!-- NUEVO LIENZO PARA EL GRÁFICO HORIZONTAL -->
+                        <div style="position: relative; height: 250px; width: 100%;">
+                            <canvas id="graficoServicios"></canvas>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
     <!-- SECCIÓN CONFIGURACIÓN -->
@@ -466,15 +613,17 @@
         </div>
     </main>
 
+    <!-- =========================================================================
+         4. VENTANAS MODALES
+         ========================================================================= -->
+
     <!-- Modal Nueva Clienta -->
     <div class="modal-overlay" id="modalNuevaClienta">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="tituloModalClienta">Registre un nuevo Cliente</h2>
             </div>
-
             <input type="hidden" id="idClientaOculto">
-            
             <div class="form-row">
                 <div class="form-group">
                     <label>Nombre</label>
@@ -485,12 +634,10 @@
                     <input type="text" id="apellidoInput" placeholder="Ej. Navarro">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Cumpleaños</label>
                 <input type="date" id="cumpleInput">
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Teléfono</label>
@@ -501,10 +648,25 @@
                     <input type="text" id="igInput" placeholder="@usuario">
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
                 <button class="btn-primary" id="btnGuardarClienta" onclick="guardarClienta()">Registrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Historial Estético Clienta -->
+    <div class="modal-overlay" id="modalPerfilClienta">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="nombrePerfilClienta">Perfil de la Clienta</h2>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h3 style="font-size: 16px; color: var(--mostaza); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Historial de Servicios</h3>
+                <div id="listaHistorialClienta" style="max-height: 300px; overflow-y: auto; padding-right: 5px;"></div>
+            </div>
+            <div class="modal-footer" style="justify-content: center;">
+                <button class="btn-secondary" onclick="cerrarModalPerfil()">Cerrar</button>
             </div>
         </div>
     </div>
@@ -516,13 +678,10 @@
                 <h2>Agendar Nuevo Turno</h2>
             </div>
             
-            <!-- INICIO ZONA CLIENTA -->
             <div class="form-group" id="grupoSeleccionClienta">
                 <label for="selectClientaTurno">Clienta</label>
                 <div style="display: flex; gap: 10px;">
-                    <select id="selectClientaTurno" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <!-- Se llena con JS -->
-                    </select>
+                    <select id="selectClientaTurno" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
                     <button type="button" id="btnNuevaClientaExpress" class="btn-secundario">+ Nueva</button>
                 </div>
             </div>
@@ -530,30 +689,26 @@
             <div class="form-group" id="grupoClientaExpress" style="display: none; background-color: #f9f9f9; padding: 12px; border-radius: 8px; border: 1px solid #eee;">
                 <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #333;">Registrar Nueva Clienta</label>
                 <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                    <input type="text" id="nombreExpress" placeholder="Nombre" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; pointer-events: auto; position: relative; z-index: 10;">
-                    <input type="text" id="apellidoExpress" placeholder="Apellido" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; pointer-events: auto; position: relative; z-index: 10;">
+                    <input type="text" id="nombreExpress" placeholder="Nombre" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    <input type="text" id="apellidoExpress" placeholder="Apellido" style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                 </div>
                 <div style="text-align: right;">
-                    <button type="button" id="btnCancelarExpress" style="font-size: 12px; color: #888; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;">
-                        Cancelar y elegir existente
-                    </button>
+                    <button type="button" id="btnCancelarExpress" style="font-size: 12px; color: #888; background: none; border: none; cursor: pointer; text-decoration: underline; padding: 0;">Cancelar y elegir existente</button>
                 </div>
             </div>
-            <!-- FIN ZONA CLIENTA -->
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Profesional</label>
-                    <select id="selectEmpleadaTurno">
-                        <option value="">Seleccione...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Servicio</label>
-                    <select id="selectServicioTurno">
-                        <option value="">Seleccione...</option>
-                    </select>
-                </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px;">Servicio:</label>
+                <select id="servicioTurno" onchange="filtrarProfesionalesPorServicio()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;">
+                    <option value="">Seleccione un servicio...</option>
+                </select>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 14px;">Profesional:</label>
+                <select id="empleadaTurno" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; background-color: #f8f9fa;" disabled>
+                    <option value="">Elija un servicio primero...</option>
+                </select>
             </div>
 
             <div class="form-row">
@@ -567,9 +722,101 @@
                 </div>
             </div>
 
+            <!-- NUEVO CAMPO: SEÑA (OPCIONAL) -->
+            <div class="form-group" style="margin-top: 15px;">
+                <label>Seña abonada ($) - <span style="color: #888; font-weight: normal;">Opcional</span></label>
+                <input type="number" id="senaTurnoInput" placeholder="Ej. 5000" value="0">
+            </div>
+
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalTurno()">Cancelar</button>
                 <button class="btn-primary" onclick="guardarTurno()">Agendar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Detalle y Cobro de Turno -->
+    <div class="modal-overlay" id="modalDetalleTurno">
+        <div class="modal-content" style="max-width: 750px; width: 90%;"> <!-- Ampliamos el ancho a 750px -->
+            <div class="modal-header">
+                <h2>Detalle y Cobro del Turno</h2>
+            </div>
+            
+            <input type="hidden" id="idTurnoCobroOculto">
+            
+            <!-- CONTENEDOR DE DOS COLUMNAS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start;">
+                
+                <!-- COLUMNA IZQUIERDA: Info del Turno -->
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    
+                    <!-- Tarjeta de Info Base -->
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                            <h3 id="nombreClientaCobro" style="margin: 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
+                            <span id="estadoTurnoBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404;">Pendiente</span>
+                        </div>
+                        <p id="servicioBaseCobro" style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
+                        <p id="precioBaseCobro" style="margin: 0; font-weight: bold; color: var(--mostaza); font-size: 15px;">Precio Base: $0</p>
+                        
+                        <!-- CAMPO SEÑA -->
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #ccc;">
+                            <label style="font-size: 13px; font-weight: 500; color: #333; white-space: nowrap;">Seña ($):</label>
+                            <input type="number" id="senaDetalleInput" placeholder="0" style="width: 100%; padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit;">
+                            <button onclick="guardarSenaIndependiente()" style="background: var(--mostaza); color: white; border: none; padding: 7px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;">Actualizar</button>
+                        </div>
+                    </div>
+
+                    <!-- Esmalte / Detalles -->
+                    <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee;">
+                        <label style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 8px;">Color / Esmalte (Opcional):</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="colorTurnoInput" placeholder="Ej. Vía Láctea..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                            <button id="btnGuardarDetalles" onclick="guardarDetallesTurno()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Guardar Info</button>
+                        </div>
+                        <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: Facturación y Extras -->
+                <div style="display: flex; flex-direction: column; gap: 15px; height: 100%;">
+                    
+                    <!-- Adicionales -->
+                    <div class="form-group" style="margin: 0; background: white; border: 1px solid #eee; border-radius: 8px; padding: 15px; flex-grow: 1;">
+                        <label style="margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px; font-weight: 500; font-size: 14px;">Adicionales y Extras</label>
+                        <div id="contenedorExtras" style="display: flex; flex-direction: column; gap: 8px; max-height: 110px; overflow-y: auto;">
+                            <p style="font-size: 13px; color: #888; margin: 0;">Cargando extras...</p>
+                        </div>
+                    </div>
+
+                    <!-- Descuentos y Pago -->
+                    <div class="form-row" style="margin: 0;">
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 13px;">Medio de Pago</label>
+                            <select id="selectMedioPago" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                                <option value="Efectivo">Efectivo</option>
+                                <option value="Transferencia">Transferencia</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 13px;">Descuento ($)</label>
+                            <input type="number" id="descuentoCobroInput" placeholder="Ej. 1000" value="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div style="text-align: right; background: #f8f9fa; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
+                        <span id="textoDetalleSena" style="font-size: 13px; color: #666;">Seña abonada: -$0</span><br>
+                        <span style="font-size: 15px; color: #333; font-weight: bold;">TOTAL A COBRAR: </span>
+                        <br>
+                        <span id="totalFinalCobro" style="font-size: 28px; color: #28a745; font-weight: bold;">$0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer" style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button class="btn-secondary" onclick="cerrarModalDetalleTurno()">Volver</button>
+                <button class="btn-primary" id="btnConfirmarCobro" onclick="confirmarCobroTurno()" style="background-color: #28a745; padding-left: 30px; padding-right: 30px;">Confirmar y Cobrar</button>
             </div>
         </div>
     </div>
@@ -580,112 +827,18 @@
             <div class="modal-header">
                 <h2 id="tituloModalEmpleada">Registrar Nueva Profesional</h2>
             </div>
-            
             <input type="hidden" id="idEmpleadaOculto">
-            
             <div class="form-group">
                 <label>Nombre y Apellido</label>
                 <input type="text" id="nombreEmpleadaInput" placeholder="Ej. Martina Gómez">
             </div>
-
             <div class="form-group">
                 <label>DNI</label>
                 <input type="text" id="dniEmpleadaInput" placeholder="Sin puntos, ej. 40123456">
             </div>
-
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalEmpleada()">Cancelar</button>
                 <button class="btn-primary" id="btnGuardarEmpleada" onclick="guardarEmpleada()">Registrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Historial Clienta-->
-    <div class="modal-overlay" id="modalPerfilClienta">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="nombrePerfilClienta">Perfil de la Clienta</h2>
-            </div>
-            
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-size: 16px; color: var(--mostaza); margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">Historial de Servicios</h3>
-                
-                <div id="listaHistorialClienta" style="max-height: 300px; overflow-y: auto; padding-right: 5px;">
-                </div>
-            </div>
-
-            <div class="modal-footer" style="justify-content: center;">
-                <button class="btn-secondary" onclick="cerrarModalPerfil()">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Detalle y Cobro de Turno -->
-    <div class="modal-overlay" id="modalDetalleTurno">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2>Detalle del Turno</h2>
-            </div>
-            
-            <input type="hidden" id="idTurnoCobroOculto">
-            
-            <!-- Resumen del Servicio Base -->
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
-                <h3 id="nombreClientaCobro" style="margin: 0 0 5px 0; color: #333; font-size: 16px;">Clienta: Cargando...</h3>
-                <p id="servicioBaseCobro" style="margin: 0; color: #666; font-size: 14px;">Servicio Base: Cargando...</p>
-                <p id="precioBaseCobro" style="margin: 5px 0 0 0; font-weight: bold; color: var(--mostaza);">Precio Base: $0</p>
-            </div>
-
-            <!-- Selección de Extras -->
-            <div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <span style="font-size: 14px; font-weight: bold;">Estado del turno:</span>
-                    <span id="estadoTurnoBadge" style="padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; background: #ffeeba; color: #856404;">Pendiente</span>
-                </div>
-                <label style="font-size: 14px; font-weight: 500; display: block; margin-bottom: 5px;">Color / Esmalte (Opcional):</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="colorTurnoInput" placeholder="Ej. Vía Láctea, Francesitas..." style="flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    <button id="btnGuardarDetalles" onclick="guardarDetallesTurno()" style="background: #17a2b8; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">Guardar Info</button>
-                </div>
-                <!-- Contenedor donde van a aparecer los colores como etiquetas -->
-                <div id="listaColoresGuardados" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <!-- Acá el JS va a inyectar los colores -->
-                </div>
-            </div>
-
-            <!-- Selección de Extras -->
-            <div class="form-group">
-                <label style="margin-bottom: 10px; display: block; border-bottom: 1px solid #eee; padding-bottom: 5px;">Adicionales y Extras</label>
-                <div id="contenedorExtras" style="display: flex; flex-direction: column; gap: 8px; max-height: 150px; overflow-y: auto;">
-                    <p style="font-size: 13px; color: #888; margin: 0;">Cargando extras...</p>
-                </div>
-            </div>
-
-            <!-- Zona de Pagos y Descuentos -->
-            <div class="form-row" style="margin-top: 20px;">
-                <div class="form-group">
-                    <label>Medio de Pago</label>
-                    <select id="selectMedioPago" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Transferencia">Transferencia</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Descuento ($)</label>
-                    <input type="number" id="descuentoCobroInput" placeholder="Ej. 1000" value="0" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                </div>
-            </div>
-
-            <!-- Total Final Dinámico -->
-            <div style="text-align: right; margin-top: 15px; padding-top: 15px; border-top: 2px dashed #eee;">
-                <span style="font-size: 14px; color: #666;">Seña abonada: -$8.000</span><br>
-                <span style="font-size: 18px; color: #333; font-weight: bold;">TOTAL A COBRAR: </span>
-                <span id="totalFinalCobro" style="font-size: 24px; color: #28a745; font-weight: bold;">$0</span>
-            </div>
-
-            <div class="modal-footer" style="margin-top: 20px;">
-                <button class="btn-secondary" onclick="cerrarModalDetalleTurno()">Volver</button>
-                <button class="btn-primary" id="btnConfirmarCobro" onclick="confirmarCobroTurno()" style="background-color: #28a745;">Confirmar y Cobrar</button>
             </div>
         </div>
     </div>
@@ -696,14 +849,11 @@
             <div class="modal-header">
                 <h2 id="tituloModalGasto">Registrar Nuevo Gasto</h2>
             </div>
-            
             <input type="hidden" id="idGastoOculto">
-            
             <div class="form-group">
                 <label>Descripción (*)</label>
                 <textarea id="descGastoInput" rows="2" placeholder="Ej. Compra de esmaltes, limas y algodón" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-family: inherit; resize: vertical;"></textarea>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Fecha (*)</label>
@@ -714,7 +864,6 @@
                     <input type="number" id="montoGastoInput" placeholder="Ej. 15000">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Tipo (Categoría)</label>
                 <div style="display: flex; gap: 10px;">
@@ -722,7 +871,6 @@
                     <button type="button" class="btn-icon" onclick="abrirModalNuevaCategoria()" style="background: var(--mostaza); color: white; padding: 0 15px; border-radius: 4px; font-weight: bold;">+</button>
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="cerrarModalGasto()">Cancelar</button>
                 <button class="btn-primary" id="btnGuardarGasto" onclick="guardarGasto()">Guardar</button>
@@ -747,7 +895,7 @@
         </div>
     </div>
     
-    <!-- MODAL DE CONFIRMACIÓN GENÉRICO -->
+    <!-- Modal de Confirmación Genérico (Alertas) -->
     <div class="modal-overlay" id="modalConfirmacion">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <div class="modal-header" style="justify-content: center; border-bottom: none; padding-bottom: 0;">
@@ -761,9 +909,95 @@
         </div>
     </div>
 
-    <!-- Contenedor para notificaciones (Toasts) -->
-    <div id="toastContainer" class="toast-container"></div>
+    <!-- Modal Detalle Sueldo -->
+    <div class="modal-overlay" id="modalDetalleSueldo">
+        <div class="modal-content" style="width: 90%; max-width: 900px;">
+            <div class="modal-header">
+                <h2 id="tituloModalDetalleSueldo">Detalle de Comisiones</h2>
+            </div>
+            
+            <div style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #eee; border-radius: 8px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
+                    <thead>
+                        <tr style="background-color: #f8f9fa; border-bottom: 2px solid #ddd;">
+                            <th style="padding: 12px 15px;">Fecha</th>
+                            <th style="padding: 12px 15px;">Clienta</th>
+                            <th style="padding: 12px 15px;">Servicio</th>
+                            <th style="padding: 12px 15px; text-align: right;">Abonado</th>
+                            <th style="padding: 12px 15px; text-align: center;">%</th>
+                            <th style="padding: 12px 15px; text-align: right;">Comisión</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaDetalleSueldoBody">
+                        <!-- JS inyecta los datos acá -->
+                    </tbody>
+                </table>
+            </div>
 
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="cerrarModalDetalleSueldo()">Volver</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Configurar Especialidades -->
+    <div class="modal-overlay" id="modalEspecialidades">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="tituloModalEspecialidades">Áreas y Comisiones</h2>
+            </div>
+            <input type="hidden" id="idEspecialidadOculto">
+            
+            <p style="font-size: 14px; color: #666; margin-bottom: 15px;">Seleccione las áreas que trabaja esta profesional y asigne su porcentaje correspondiente (Ej: 0.50 para el 50%).</p>
+            
+            <!-- Lista dinámica -->
+            <div id="contenedorListaAreas" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; border-radius: 8px; padding: 10px;">
+                <!-- JS inyectará los checkboxes acá -->
+            </div>
+
+            <div class="modal-footer" style="margin-top: 20px;">
+                <button class="btn-secondary" onclick="cerrarModalEspecialidades()">Cancelar</button>
+                <button class="btn-primary" onclick="guardarEspecialidades()">Guardar Configuración</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalNuevoIngreso">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Registrar Nuevo Ingreso</h2>
+            </div>
+            
+            <div class="form-group">
+                <label>Concepto (Ej: Venta de producto, Seña)</label>
+                <input type="text" id="conceptoIngresoManual" placeholder="¿De qué es este ingreso?">
+            </div>
+
+            <div class="form-group">
+                <label>Monto ($)</label>
+                <input type="number" id="montoIngresoManual" placeholder="0.00">
+            </div>
+
+            <div class="form-group">
+                <label>Medio de Pago</label>
+                <select id="pagoIngresoManual">
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                    <option value="Tarjeta">Tarjeta / MercadoPago</option>
+                </select>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn-secondary" onclick="cerrarModalNuevoIngreso()">Cancelar</button>
+                <button class="btn-primary" onclick="guardarIngresoManual()">Guardar Ingreso</button>
+            </div>
+        </div>
+    </div>
+    <!-- =========================================================================
+         5. COMPONENTES GLOBALES (Toasts, Scripts)
+         ========================================================================= -->
+    <div id="toastContainer" class="toast-container"></div>
     <script src="app.js"></script>
+
 </body>
 </html>

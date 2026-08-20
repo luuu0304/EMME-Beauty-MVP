@@ -50,7 +50,8 @@ function buildSeedTurnos() {
             Id_Empleada_Recibio_Sena: 1,
             Estado: 'Pendiente',
             Color: null,
-            recordatorio_enviado: 0
+            recordatorio_enviado: 0,
+            Liquidado: 0
         },
         {
             Id_Turno: 2,
@@ -63,7 +64,8 @@ function buildSeedTurnos() {
             Id_Empleada_Recibio_Sena: null,
             Estado: 'Pendiente',
             Color: null,
-            recordatorio_enviado: 0
+            recordatorio_enviado: 0,
+            Liquidado: 0
         },
         {
             Id_Turno: 3,
@@ -76,7 +78,8 @@ function buildSeedTurnos() {
             Id_Empleada_Recibio_Sena: 2,
             Estado: 'Realizado',
             Color: 'Rojo clásico',
-            recordatorio_enviado: 1
+            recordatorio_enviado: 1,
+            Liquidado: 0
         },
         {
             Id_Turno: 4,
@@ -89,22 +92,40 @@ function buildSeedTurnos() {
             Id_Empleada_Recibio_Sena: null,
             Estado: 'Pendiente',
             Color: null,
-            recordatorio_enviado: 0
+            recordatorio_enviado: 0,
+            Liquidado: 0
         }
     ];
+}
+
+function ensureShape(store) {
+    store.empleada_area = store.empleada_area || [];
+    store.liquidaciones = store.liquidaciones || [];
+    store.counters = store.counters || {};
+    store.counters.liquidacion = store.counters.liquidacion || 0;
+    store.turnos.forEach((t) => {
+        if (t.Liquidado === undefined) t.Liquidado = t.Estado === 'Pagado' ? 0 : 0;
+        if (t.Sena_Monto === undefined) t.Sena_Monto = 0;
+    });
+    store.servicios.forEach((s) => {
+        if (!s.Area) {
+            s.Area = /pestañ|ceja/i.test(s.Nombre) ? 'Cejas y Pestañas' : 'Manicura';
+        }
+    });
+    return store;
 }
 
 function loadStore() {
     if (data) return data;
 
     if (fs.existsSync(STORE_PATH)) {
-        data = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
+        data = ensureShape(JSON.parse(fs.readFileSync(STORE_PATH, 'utf8')));
         return data;
     }
 
     const seed = JSON.parse(fs.readFileSync(SEED_PATH, 'utf8'));
     seed.turnos = buildSeedTurnos();
-    data = seed;
+    data = ensureShape(seed);
     saveStore();
     console.log('📁 Modo demo: datos de prueba cargados en', STORE_PATH);
     return data;
@@ -190,8 +211,143 @@ function getHistorialClienta(id) {
 
 // --- Empleadas ---
 
+function parseLocalDate(value) {
+    if (!value) return null;
+    return new Date(String(value).replace(' ', 'T'));
+}
+
+function inDateRange(fechaStr, desde, hasta) {
+    const dia = String(fechaStr).slice(0, 10);
+    const from = desde || '2000-01-01';
+    const to = hasta || '2099-12-31';
+    return dia >= from && dia <= to;
+}
+
+function totalExtrasTurno(store, idTurno) {
+    return store.turno_extra
+        .filter((te) => String(te.Id_Turno) === String(idTurno))
+        .reduce((sum, te) => {
+            const extra = findById(store.extras, 'Id_Extra', te.Id_Extra);
+            return sum + Number(extra?.Precio || 0);
+        }, 0);
+}
+
+function comisionTurno(store, turno) {
+    const servicio = getServicio(turno.Id_Servicio);
+    const total = Number(servicio?.Precio_Base || 0) + totalExtrasTurno(store, turno.Id_Turno);
+    const area = (store.empleada_area || []).find(
+        (a) => String(a.Id_Empleada) === String(turno.Id_Empleada) && a.Area === servicio?.Area
+    );
+    return total * Number(area?.Porcentaje_Comision ?? 0.5);
+}
+
 function getEmpleadas() {
-    return [...loadStore().empleadas];
+    const store = loadStore();
+    return store.empleadas.map((e) => {
+        const saldo = store.turnos
+            .filter((t) => String(t.Id_Empleada) === String(e.Id_Empleada) && t.Estado === 'Pagado' && !t.Liquidado)
+            .reduce((sum, t) => sum + comisionTurno(store, t), 0);
+        const liquidaciones = (store.liquidaciones || [])
+            .filter((l) => String(l.Id_Empleada) === String(e.Id_Empleada))
+            .sort((a, b) => String(b.Fecha_Pago).localeCompare(String(a.Fecha_Pago)));
+        const ultima = liquidaciones[0];
+        const areas = (store.empleada_area || [])
+            .filter((a) => String(a.Id_Empleada) === String(e.Id_Empleada))
+            .map((a) => a.Area)
+            .join(',');
+        return {
+            ...e,
+            DNI: e.DNI || e.Dni || null,
+            Saldo_Acumulado: saldo,
+            Ultima_Fecha_Liq: ultima?.Fecha_Pago || null,
+            Ultimo_Monto_Liq: ultima?.Monto_Abonado || null,
+            Areas: areas || null
+        };
+    });
+}
+
+function getEmpleadasPorServicio(idServicio) {
+    const store = loadStore();
+    const servicio = getServicio(idServicio);
+    if (!servicio?.Area) {
+        return store.empleadas.map((e) => ({ Id_Empleada: e.Id_Empleada, Nombre: e.Nombre_Ap, Apellido: '' }));
+    }
+    const ids = new Set(
+        (store.empleada_area || [])
+            .filter((a) => a.Area === servicio.Area)
+            .map((a) => String(a.Id_Empleada))
+    );
+    const filtradas = store.empleadas.filter((e) => ids.has(String(e.Id_Empleada)));
+    const lista = filtradas.length ? filtradas : store.empleadas;
+    return lista.map((e) => ({ Id_Empleada: e.Id_Empleada, Nombre: e.Nombre_Ap, Apellido: '' }));
+}
+
+function getAreas() {
+    const areas = new Set(loadStore().servicios.map((s) => s.Area).filter(Boolean));
+    return [...areas].map((Area) => ({ Area }));
+}
+
+function getEmpleadaAreas(id) {
+    return (loadStore().empleada_area || [])
+        .filter((a) => String(a.Id_Empleada) === String(id))
+        .map((a) => ({ Area: a.Area, Porcentaje_Comision: a.Porcentaje_Comision }));
+}
+
+function setEmpleadaAreas(id, areas) {
+    const store = loadStore();
+    store.empleada_area = (store.empleada_area || []).filter((a) => String(a.Id_Empleada) !== String(id));
+    for (const item of areas || []) {
+        store.empleada_area.push({
+            Id_Empleada: Number(id),
+            Area: item.area,
+            Porcentaje_Comision: Number(item.comision ?? 0.5)
+        });
+    }
+    saveStore();
+    return true;
+}
+
+function getSueldoDetalle(id) {
+    const store = loadStore();
+    return store.turnos
+        .filter((t) => String(t.Id_Empleada) === String(id) && t.Estado === 'Pagado' && !t.Liquidado)
+        .map((t) => {
+            const c = findById(store.clientas, 'Id_Clienta', t.Id_Clienta);
+            const s = getServicio(t.Id_Servicio);
+            const total = Number(s?.Precio_Base || 0) + totalExtrasTurno(store, t.Id_Turno);
+            const area = (store.empleada_area || []).find(
+                (a) => String(a.Id_Empleada) === String(t.Id_Empleada) && a.Area === s?.Area
+            );
+            const pct = Number(area?.Porcentaje_Comision ?? 0.5);
+            return {
+                Id_Turno: t.Id_Turno,
+                Fecha_Hora: t.Fecha_Hora,
+                Nombre_Clienta: `${c?.Nombre || ''} ${c?.Apellido || ''}`.trim(),
+                Nombre_Servicio: s?.Nombre,
+                Total_Abonado: total,
+                Porcentaje_Comision: pct,
+                A_Cobrar: total * pct
+            };
+        })
+        .sort((a, b) => String(b.Fecha_Hora).localeCompare(String(a.Fecha_Hora)));
+}
+
+function liquidarSueldo(id) {
+    const store = loadStore();
+    const pendientes = store.turnos.filter(
+        (t) => String(t.Id_Empleada) === String(id) && t.Estado === 'Pagado' && !t.Liquidado
+    );
+    const monto = pendientes.reduce((sum, t) => sum + comisionTurno(store, t), 0);
+    if (monto <= 0) return { error: 400, message: 'No hay saldo pendiente para liquidar' };
+    pendientes.forEach((t) => { t.Liquidado = 1; });
+    store.liquidaciones.push({
+        Id_Liquidacion: nextId('liquidacion'),
+        Id_Empleada: Number(id),
+        Fecha_Pago: toDateOnly(new Date()),
+        Monto_Abonado: monto
+    });
+    saveStore();
+    return { message: 'Liquidación registrada', Monto_Abonado: monto };
 }
 
 function createEmpleada(body) {
@@ -273,21 +429,28 @@ function getTurnosPorFecha(fecha) {
                 Precio_Base: s?.Precio_Base,
                 Id_Empleada: t.Id_Empleada,
                 Estado: t.Estado,
-                Color: t.Color
+                Color: t.Color,
+                Sena_Monto: t.Sena_Monto || 0
             };
         });
 }
 
 function createTurno(body) {
     const store = loadStore();
-    const conflicto = store.turnos.find(
-        (t) => String(t.Id_Empleada) === String(body.Id_Empleada) && t.Fecha_Hora === body.Fecha_Hora
-    );
+    const inicio = parseLocalDate(body.Fecha_Hora);
+    const fin = parseLocalDate(calcularFin(body.Fecha_Hora, body.Id_Servicio));
+    const conflicto = store.turnos.find((t) => {
+        if (String(t.Id_Empleada) !== String(body.Id_Empleada)) return false;
+        const tInicio = parseLocalDate(t.Fecha_Hora);
+        const tFin = parseLocalDate(t.Fecha_Hora_Fin || calcularFin(t.Fecha_Hora, t.Id_Servicio));
+        return inicio < tFin && fin > tInicio;
+    });
     if (conflicto) {
         return { error: 400, message: 'La profesional ya tiene un turno agendado en ese horario.' };
     }
 
     const id = nextId('turno');
+    const sena = Number(body.Sena_Monto || 0);
     const turno = {
         Id_Turno: id,
         Id_Clienta: body.Id_Clienta,
@@ -295,15 +458,49 @@ function createTurno(body) {
         Id_Servicio: body.Id_Servicio,
         Fecha_Hora: body.Fecha_Hora,
         Fecha_Hora_Fin: calcularFin(body.Fecha_Hora, body.Id_Servicio),
-        Sena_Monto: body.Sena_Monto || 0,
-        Id_Empleada_Recibio_Sena: null,
+        Sena_Monto: sena,
+        Id_Empleada_Recibio_Sena: sena > 0 ? body.Id_Empleada : null,
         Estado: 'Pendiente',
         Color: null,
-        recordatorio_enviado: 0
+        recordatorio_enviado: 0,
+        Liquidado: 0
     };
     store.turnos.push(turno);
+    if (sena > 0) {
+        const c = findById(store.clientas, 'Id_Clienta', body.Id_Clienta);
+        store.ingresos.push({
+            Id_Ingreso: nextId('ingreso'),
+            Id_Turno: id,
+            Fecha: toDateOnly(new Date()),
+            Monto_Total: sena,
+            Medio_Pago: 'Transferencia',
+            Descuento_Aplicado: 0,
+            Concepto: `Seña abonada - ${c?.Nombre || ''} ${c?.Apellido || ''}`.trim()
+        });
+    }
     saveStore();
     return { message: '¡Turno creado exitosamente!' };
+}
+
+function actualizarSena(id, senaMonto, nombreClienta) {
+    const store = loadStore();
+    const turno = findById(store.turnos, 'Id_Turno', id);
+    if (!turno) return { error: 404, message: 'Turno no encontrado' };
+    const monto = Number(senaMonto || 0);
+    turno.Sena_Monto = monto;
+    if (monto > 0) {
+        store.ingresos.push({
+            Id_Ingreso: nextId('ingreso'),
+            Id_Turno: turno.Id_Turno,
+            Fecha: toDateOnly(new Date()),
+            Monto_Total: monto,
+            Medio_Pago: 'Transferencia',
+            Descuento_Aplicado: 0,
+            Concepto: `Seña abonada - ${nombreClienta || ''}`.trim()
+        });
+    }
+    saveStore();
+    return { message: 'Seña guardada e ingreso registrado' };
 }
 
 function updateTurnoDetalles(id, color) {
@@ -353,7 +550,8 @@ function createTurnoDemo(nombreCliente, telefono) {
         Id_Empleada_Recibio_Sena: null,
         Estado: 'Pendiente',
         Color: null,
-        recordatorio_enviado: 0
+        recordatorio_enviado: 0,
+        Liquidado: 0
     };
     store.turnos.push(turno);
     saveStore();
@@ -534,8 +732,65 @@ function cobrarTurno(body) {
     }
 
     turno.Estado = 'Pagado';
+    turno.Liquidado = 0;
     saveStore();
     return { message: '¡Cobro registrado exitosamente!' };
+}
+
+function getDashboardKpis(desde, hasta) {
+    const store = loadStore();
+    const ingresos = store.ingresos
+        .filter((i) => inDateRange(i.Fecha, desde, hasta))
+        .reduce((sum, i) => sum + Number(i.Monto_Total || 0), 0);
+    const gastos = store.gastos
+        .filter((g) => inDateRange(g.Fecha, desde, hasta))
+        .reduce((sum, g) => sum + Number(g.Monto || 0), 0);
+    const sueldos = (store.liquidaciones || [])
+        .filter((l) => inDateRange(l.Fecha_Pago, desde, hasta))
+        .reduce((sum, l) => sum + Number(l.Monto_Abonado || 0), 0);
+    return {
+        Ingresos: ingresos,
+        Gastos: gastos,
+        Sueldos: sueldos,
+        GananciaNeta: ingresos - gastos - sueldos
+    };
+}
+
+function getGraficoIngresos(desde, hasta) {
+    const store = loadStore();
+    const porDia = new Map();
+    store.ingresos.filter((i) => inDateRange(i.Fecha, desde, hasta)).forEach((i) => {
+        const dia = String(i.Fecha).slice(0, 10);
+        const row = porDia.get(dia) || { FechaCompleta: dia, Total: 0, Turnos: 0 };
+        row.Total += Number(i.Monto_Total || 0);
+        porDia.set(dia, row);
+    });
+    store.turnos.filter((t) => inDateRange(t.Fecha_Hora, desde, hasta)).forEach((t) => {
+        const dia = String(t.Fecha_Hora).slice(0, 10);
+        const row = porDia.get(dia) || { FechaCompleta: dia, Total: 0, Turnos: 0 };
+        row.Turnos += 1;
+        porDia.set(dia, row);
+    });
+    return [...porDia.values()]
+        .sort((a, b) => a.FechaCompleta.localeCompare(b.FechaCompleta))
+        .map((row) => {
+            const parts = row.FechaCompleta.split('-');
+            return { Dia: `${parts[2]}/${parts[1]}`, FechaCompleta: row.FechaCompleta, Total: row.Total, Turnos: row.Turnos };
+        });
+}
+
+function getServiciosEstrella(desde, hasta) {
+    const store = loadStore();
+    const counts = new Map();
+    store.turnos.filter((t) => inDateRange(t.Fecha_Hora, desde, hasta)).forEach((t) => {
+        const s = getServicio(t.Id_Servicio);
+        if (!s) return;
+        counts.set(s.Nombre, (counts.get(s.Nombre) || 0) + 1);
+    });
+    return [...counts.entries()]
+        .map(([Nombre, Cantidad]) => ({ Nombre, Cantidad }))
+        .sort((a, b) => b.Cantidad - a.Cantidad)
+        .slice(0, 5);
 }
 
 function useJsonStore() {
@@ -554,13 +809,20 @@ module.exports = {
     updateClienta,
     getHistorialClienta,
     getEmpleadas,
+    getEmpleadasPorServicio,
     createEmpleada,
     updateEmpleada,
     deleteEmpleada,
+    getAreas,
+    getEmpleadaAreas,
+    setEmpleadaAreas,
+    getSueldoDetalle,
+    liquidarSueldo,
     getServicios,
     getTurnosAgenda,
     getTurnosPorFecha,
     createTurno,
+    actualizarSena,
     updateTurnoDetalles,
     createTurnoDemo,
     getTurnosParaRecordatorio,
@@ -573,5 +835,8 @@ module.exports = {
     getExtras,
     getIngresos,
     createIngresoManual,
-    cobrarTurno
+    cobrarTurno,
+    getDashboardKpis,
+    getGraficoIngresos,
+    getServiciosEstrella
 };

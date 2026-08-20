@@ -4,7 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const dbConfig = {
     user: process.env.DB_USER || 'sa',
-    password: process.env.DB_PASSWORD || 'TThmA4bmPfPUk*',
+    password: process.env.DB_PASSWORD || '',
     server: process.env.DB_SERVER || 'localhost',
     database: process.env.DB_NAME || 'EmmE_Beauty',
     options: {

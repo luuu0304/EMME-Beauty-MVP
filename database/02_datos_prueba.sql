@@ -63,4 +63,19 @@ WHERE Fecha_Hora_Fin IS NULL;
 
 -- Lo vemos para confirmar
 
-SELECT * FROM Servicio;
+SELECT * FROM Empleada_Area;
+
+-- Ejemplo: Asignamos Cejas y Pestañas a Leyla (Supongamos que su Id_Empleada es 1)
+INSERT INTO Empleada_Area (Id_Empleada, Area) VALUES (1, 'Cejas y Pestañas');
+
+-- Ejemplo: Asignamos Cejas y Pestañas a Luciana (Supongamos que su Id_Empleada es 2)
+INSERT INTO Empleada_Area (Id_Empleada, Area) VALUES (2, 'Cejas y Pestañas');
+
+-- Ejemplo: Asignamos Manicura a Meli (Supongamos que su Id_Empleada es 3)
+INSERT INTO Empleada_Area (Id_Empleada, Area) VALUES (3, 'Manicura');
+
+SELECT COLUMN_NAME 
+FROM INFORMATION_SCHEMA.COLUMNS 
+WHERE TABLE_NAME = 'Empleada';
+
+SELECT * FROM Turno;
