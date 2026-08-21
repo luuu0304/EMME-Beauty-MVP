@@ -8,7 +8,7 @@
     "dev": "nodemon index.js",
     "migrate:recordatorio": "node scripts/migrate-recordatorio.js",
     "install:chrome": "npx puppeteer browsers install chrome",
-    "whatsapp:reset": "pkill -f 'chrome.*wwebjs' 2>/dev/null; pkill -f 'session-emme-beauty' 2>/dev/null; rm -rf .wwebjs_auth .wwebjs_cache && echo 'Sesión borrada. Usá npm start y escaneá el QR.'"
+    "whatsapp:reset": "pkill -f 'chrome.*wwebjs' 2>/dev/null; pkill -f 'session-emme-beauty' 2>/dev/null; node scripts/reset-whatsapp.js"
   },
   "keywords": [],
   "author": "",

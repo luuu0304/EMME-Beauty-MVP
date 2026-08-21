@@ -9,8 +9,9 @@ const { Client, LocalAuth } = pkg;
 const { sql, getPool, isDbAvailable } = require('../db/db');
 const { getRecordatorioConfig, getEmmeConfig, isWhatsAppEnabled } = require('../config/loadEnv');
 const { armarMensajeRecordatorio } = require('./mensajes');
+const { resolverRutasWhatsApp, borrarSesionWhatsApp } = require('./paths');
 
-const backendRoot = path.join(__dirname, '..');
+const whatsappDirs = resolverRutasWhatsApp();
 
 let client = null;
 let botStatus = 'disconnected';
@@ -340,7 +341,7 @@ function crearCliente() {
     return new Client({
         authStrategy: new LocalAuth({
             clientId: 'emme-beauty',
-            dataPath: path.join(backendRoot, '.wwebjs_auth')
+            dataPath: whatsappDirs.auth
         }),
         puppeteer: puppeteerConfig,
         webVersionCache: {
@@ -424,14 +425,7 @@ async function reiniciarSesionWhatsApp(opciones = {}) {
     ultimoQr = null;
 
     if (limpiarSesion) {
-        const authPath = path.join(backendRoot, '.wwebjs_auth');
-        const cachePath = path.join(backendRoot, '.wwebjs_cache');
-        for (const dir of [authPath, cachePath]) {
-            if (fs.existsSync(dir)) {
-                fs.rmSync(dir, { recursive: true, force: true });
-                console.log('[WhatsApp] Carpeta eliminada:', dir);
-            }
-        }
+        borrarSesionWhatsApp();
     }
 
     await new Promise((resolve) => setTimeout(resolve, 2000));

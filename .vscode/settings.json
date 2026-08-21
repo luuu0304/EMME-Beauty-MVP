@@ -1,0 +1,23 @@
+{
+  "files.watcherExclude": {
+    "**/.wwebjs_auth/**": true,
+    "**/.wwebjs_cache/**": true,
+    "**/backend/data/demo-store.json": true,
+    "**/.DS_Store": true
+  },
+  "liveServer.settings.ignoreFiles": [
+    ".vscode/**",
+    "**/.wwebjs_auth/**",
+    "**/.wwebjs_cache/**",
+    "**/backend/data/demo-store.json",
+    "**/.DS_Store",
+    "**/node_modules/**"
+  ],
+  "livePreview.autoRefreshPreview": "OnChangesToOpenedFile",
+  "fiveServer.ignore": [
+    "**/.wwebjs_auth/**",
+    "**/.wwebjs_cache/**",
+    "**/backend/data/demo-store.json",
+    "**/.DS_Store"
+  ]
+}

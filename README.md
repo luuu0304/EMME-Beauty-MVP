@@ -139,7 +139,8 @@ Si querés la base real en lugar del JSON de demo:
 |----------|------------|
 | El frontend abre pero no hay datos | Confirmá que el backend está en el puerto **7777** y que no hay error en esa terminal. |
 | WhatsApp no muestra QR | Completá `CHROME_PATH` o corré `npm run install:chrome`. En la web: **Reiniciar conexión**. |
-| Error de Chrome / sesión trabada | En `backend/`: `npm run whatsapp:reset` y volvé a `npm start`. En Windows, borrá a mano las carpetas `backend/.wwebjs_auth` y `backend/.wwebjs_cache`. |
+| Error de Chrome / sesión trabada | En `backend/`: `npm run whatsapp:reset` y volvé a `npm start`. La sesión vive en `~/.emme-beauty/` (en Windows, `%USERPROFILE%\.emme-beauty\`). |
+| La página se recarga sola | No abras el proyecto con Live Server / Live Preview sobre la carpeta del repo. Chrome de WhatsApp escribe archivos todo el tiempo y el watcher recarga `index.html`. Usá `python3 -m http.server` **dentro de `frontend/`** o `npx serve`. |
 | Puerto 7777 u 3000 ocupado | Cerrá el proceso anterior o cambiá el puerto (si cambias 7777, actualizá `API_BASE` en `frontend/app.js`). |
 | `npm` no encuentra `package.json` | Ejecutá los comandos **dentro** de `backend/` o `frontend/`. |
 
